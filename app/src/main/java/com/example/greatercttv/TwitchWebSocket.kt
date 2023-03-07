@@ -1,20 +1,23 @@
 package com.example.greatercttv
 
 import android.util.Log
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import android.widget.Toast
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import okhttp3.*
-import okhttp3.WebSocketListener
 import kotlin.random.Random
 
 
-class WebSocketListener(
-    private val _messages: SnapshotStateList<String>
-) : WebSocketListener() {
+class TwitchWebSocket : WebSocketListener() {
 
     private lateinit var webSocket: WebSocket
     private lateinit var channel: String
     private lateinit var anon: String
 
+    var showToast by mutableStateOf("")
+
+    private val _messages = mutableStateListOf<String>()
+    val messages: List<String> = _messages
 
     private var i = 0
 
@@ -29,15 +32,17 @@ class WebSocketListener(
     }
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        Log.d("WebSocket", "Connected to twitch WebSocket")
+        Log.d("WebSocket onOpen", "Connected to twitch WebSocket")
 
         this.anon = "justinfan" + Random.nextInt(1000, 80000)
 
-        Log.d("WebSocket", "onOpen send NICK")
+        Log.d("WebSocket onOpen", "onOpen send NICK")
         webSocket.send("NICK $anon")
 
-        Log.d("WebSocket", "onOpen send JOIN")
+        Log.d("WebSocket onOpen", "onOpen send JOIN")
         webSocket.send("JOIN #$channel")
+
+        showToast = "Connecté"
     }
 
     override fun onMessage(webSocket: WebSocket, text: String) {
@@ -58,25 +63,27 @@ class WebSocketListener(
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
         webSocket.close(NORMAL_CLOSURE_STATUS, null)
-        Log.d("WebSocket", "Closing : $code / $reason")
+        Log.d("WebSocket onClosing", "Closing : $code / $reason")
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        Log.d("WebSocket", "Error : " + t.message)
+        Log.d("WebSocket onFailure", "Error : " + t.message)
     }
 
     fun closeWebSocket() {
-        /*
-        mainActivity.runOnUiThread {
-            Toast.makeText(mainActivity, "Close", Toast.LENGTH_SHORT).show()
-        }
-
-         */
-
         this.webSocket.close(NORMAL_CLOSURE_STATUS, null)
+
+        showToast = "Déconnecté"
     }
 
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
+    }
+}
+
+@Composable
+fun ToastShow(webSocketListenerOue: TwitchWebSocket) {
+    if (webSocketListenerOue.showToast != "") {
+        Toast.makeText(LocalContext.current, webSocketListenerOue.showToast, Toast.LENGTH_SHORT).show()
     }
 }
