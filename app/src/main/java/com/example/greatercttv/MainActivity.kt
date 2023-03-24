@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
-                                detectHorizontalDragGestures { change, dragAmount ->
+                                detectHorizontalDragGestures { _, dragAmount ->
                                     when {
                                         dragAmount > 0 -> {
                                             if (channelList.getOrNull(state.value - 1) != null) {
