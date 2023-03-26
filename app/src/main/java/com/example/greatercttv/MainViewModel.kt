@@ -29,4 +29,5 @@ class MainViewModel : ViewModel() {
             state.value = _channelList.size - 1
         }
     }
+
 }
