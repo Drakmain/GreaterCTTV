@@ -1,0 +1,188 @@
+{
+  "id": "5e2a44681df9195f1a4ce133",
+  "bots": [],
+  "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/592b4bc9-9313-4011-9ac9-6853b9f3867a-profile_image-300x300.png",
+  "channelEmotes": [
+    {
+      "id": "5fe0c2c3f534b2348747aa8a",
+      "code": "samuelJAM",
+      "imageType": "gif",
+      "animated": true,
+      "userId": "5e2a44681df9195f1a4ce133"
+    }
+  ],
+  "sharedEmotes": [
+    {
+      "id": "55b6f480e66682f576dd94f5",
+      "code": "Clap",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "550d9f3e62e6bd0027aedb53",
+        "name": "turtlemaw",
+        "displayName": "turtlemaw",
+        "providerId": "22998696"
+      }
+    },
+    {
+      "id": "58ae8407ff7b7276f8e594f2",
+      "code": "POGGERS",
+      "imageType": "png",
+      "animated": false,
+      "user": {
+        "id": "57ea01a4665bcff56f0b64da",
+        "name": "to_ot",
+        "displayName": "tO_Ot",
+        "providerId": "133315887"
+      }
+    },
+    {
+      "id": "5b77ac3af7bddc567b1d5fb2",
+      "code": "pepeJAM",
+      "imageType": "gif",
+      "animated": true,
+      "width": 28,
+      "height": 27,
+      "user": {
+        "id": "56eb3c0a77941b541a7f491b",
+        "name": "shakothewacko",
+        "displayName": "ShakoTheWacko",
+        "providerId": "56001568"
+      }
+    },
+    {
+      "id": "5b1740221c5a6065a7bad4b5",
+      "code": "pepeD",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "559c3b94a9d6c1121305ff4e",
+        "name": "garych",
+        "displayName": "garych",
+        "providerId": "30393449"
+      }
+    },
+    {
+      "id": "5f1b0186cf6d2144653d2970",
+      "code": "catJAM",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "5f17a10cfe85fb4472d107b4",
+        "name": "madlittlecat",
+        "displayName": "MadLittleCat",
+        "providerId": "36646922"
+      }
+    },
+    {
+      "id": "59f06613ba7cdd47e9a4cad2",
+      "code": "PartyParrot",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "59ddbf472c047947fb7d8a95",
+        "name": "lheet",
+        "displayName": "Lheet",
+        "providerId": "177293080"
+      }
+    },
+    {
+      "id": "5ada077451d4120ea3918426",
+      "code": "blobDance",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "57f24d3ea6a90cd20eaef6aa",
+        "name": "koorichi",
+        "displayName": "KooriChi",
+        "providerId": "130629630"
+      }
+    },
+    {
+      "id": "5e0fa9d40550d42106b8a489",
+      "code": "Sadge",
+      "imageType": "png",
+      "animated": false,
+      "user": {
+        "id": "59712324eaab4f3320e6ccc9",
+        "name": "redshell",
+        "displayName": "Redshell",
+        "providerId": "157440062"
+      }
+    },
+    {
+      "id": "5e9c6c187e090362f8b0b9e8",
+      "code": "KEKW",
+      "imageType": "png",
+      "animated": false,
+      "user": {
+        "id": "5e989dffce7cbf62fe14f2b7",
+        "name": "m3t4m0rf",
+        "displayName": "M3T4M0RF",
+        "providerId": "111753311"
+      }
+    },
+    {
+      "id": "5ff8f48a94ed120c66d3bf3e",
+      "code": "PepoG",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "5dffecae8608fb0da412193a",
+        "name": "p1xelpls",
+        "displayName": "P1xelPls",
+        "providerId": "190584268"
+      }
+    },
+    {
+      "id": "5eaa12a074046462f768344b",
+      "code": "peepoShy",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "5b4a5ef4cf46791f8492082b",
+        "name": "shinjidude",
+        "displayName": "ShinjiDude",
+        "providerId": "115611202"
+      }
+    },
+    {
+      "id": "6080da1039b5010444d03d3e",
+      "code": "monkaSTEER",
+      "imageType": "gif",
+      "animated": true,
+      "width": 28,
+      "height": 25,
+      "user": {
+        "id": "60480d03f8d5342a71e29f8f",
+        "name": "thomasnaoto41",
+        "displayName": "thomasnaoto41",
+        "providerId": "657712259"
+      }
+    },
+    {
+      "id": "6052368c306b602acc59eb5c",
+      "code": "alienJam",
+      "imageType": "gif",
+      "animated": true,
+      "user": {
+        "id": "5f5a45316084af6c1719f4df",
+        "name": "svckducker",
+        "displayName": "SvckDucker",
+        "providerId": "53524009"
+      }
+    },
+    {
+      "id": "61d134ce06fd6a9f5bdefc97",
+      "code": "Susge",
+      "imageType": "png",
+      "animated": false,
+      "user": {
+        "id": "5f61e2d40b77be6bfcade9d4",
+        "name": "franqitom",
+        "displayName": "FranqitoM",
+        "providerId": "506611605"
+      }
+    }
+  ]
+}
