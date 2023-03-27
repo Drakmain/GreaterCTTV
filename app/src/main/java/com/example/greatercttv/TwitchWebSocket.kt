@@ -16,9 +16,11 @@ class TwitchWebSocket : WebSocketListener() {
     private lateinit var client: OkHttpClient
     private lateinit var channel: String
     private lateinit var anon: String
-    private lateinit var emotesTV: MutableList<JsonElement>
-    private lateinit var emotesBTTV: List<String>
-    private lateinit var emotes7TV: MutableList<JsonElement>
+    lateinit var emotesTV: List<JsonElement>
+    lateinit var emotesBTTV: List<JsonElement>
+    lateinit var emotes7TV: List<JsonElement>
+
+    lateinit var globalEmotes7TV: List<JsonElement>
 
 
     var showToast by mutableStateOf("")
@@ -56,14 +58,17 @@ class TwitchWebSocket : WebSocketListener() {
         Log.d("Twitch API", "getting channel ID")
         val id = this.getID(token)
 
-        Log.d("Twitch API", "getting channel Emotes")
+        Log.d("Twitch API", "getting channel Twitch Emotes")
         this.emotesTV = getEmotes(token, id)
 
-        Log.d("Twitch API", "getting channel Emotes")
+        Log.d("Twitch API", "getting channel 7TV Emotes")
         this.emotes7TV = get7TVEmote(id)
 
-        Log.d("Twitch API", "getting channel Emotes")
-        this.emotesBTTV = getBTTVEmote(this.channel)
+        Log.d("Twitch API", "getting channel BTTV Emotes")
+        this.emotesBTTV = getBTTVEmote(id)
+
+        Log.d("Twitch API", "getting channel BTTV global Emotes")
+        this.getBTTVGlobalEmote()
 
         showToast = "Connecté"
     }
@@ -100,7 +105,7 @@ class TwitchWebSocket : WebSocketListener() {
         return jsonObject.getAsJsonArray("data")[0].asJsonObject.get("id").asString
     }
 
-    private fun getEmotes(token: String, id: String): MutableList<JsonElement> {
+    private fun getEmotes(token: String, id: String): List<JsonElement> {
         val request: Request = Request.Builder().header("Client-ID", "ayyfine4dksduojooctr26hbt3zms7")
             .header("Accept", "application/vnd.twitchtv.v5+json").header("Authorization", "Bearer $token")
             .url("https://api.twitch.tv/helix/chat/emotes?broadcaster_id=$id").build()
@@ -114,21 +119,36 @@ class TwitchWebSocket : WebSocketListener() {
         return jsonObject.get("data").asJsonArray.asList()
     }
 
-    private fun getBTTVEmote(streamer: String): List<String> {
-        val request: Request = Request.Builder().url("https://decapi.me/bttv/emotes/$streamer").build()
+    private fun getBTTVGlobalEmote(): List<JsonElement> {
+        val request: Request = Request.Builder().url("https://api.betterttv.net/3/cached/emotes/global").build()
 
         val response = this.client.newCall(request).execute()
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
 
-        if (body == "Unable to retrieve BetterTTV details for channel: $streamer") {
-            return emptyList()
-        }
+        val jsonObject = JsonParser.parseString(body).asJsonArray
 
-        return body.split(" ")
+        return jsonObject.toList()
     }
 
-    private fun get7TVEmote(id: String): MutableList<JsonElement> {
+    private fun getBTTVEmote(id: String): List<JsonElement> {
+        val request: Request = Request.Builder().url("https://api.betterttv.net/3/cached/users/twitch/$id").build()
+
+        val response = this.client.newCall(request).execute()
+
+        val body = response.body?.string() ?: throw Throwable("body response is null")
+
+        var jsonObject = JsonParser.parseString(body).asJsonObject
+
+        val channelEmotes = jsonObject.get("channelEmotes").asJsonArray
+        val sharedEmotes = jsonObject.get("sharedEmotes").asJsonArray
+
+        channelEmotes.addAll(sharedEmotes)
+
+        return channelEmotes.toList()
+    }
+
+    private fun get7TVEmote(id: String): List<JsonElement> {
         val request: Request = Request.Builder().url("https://7tv.io/v3/users/TWITCH/$id").build()
 
         val response = this.client.newCall(request).execute()
@@ -137,16 +157,10 @@ class TwitchWebSocket : WebSocketListener() {
 
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
-        var code: Int = try {
-            jsonObject.get("status_code").asInt
-        } catch (_: Throwable){
-            0
-        }
-
-        return if (code == 0){
+        return try {
             jsonObject.get("emote_set").asJsonObject.get("emotes").asJsonArray.asList()
-        } else{
-            mutableListOf()
+        } catch (_: Throwable) {
+            emptyList()
         }
     }
 
@@ -154,47 +168,61 @@ class TwitchWebSocket : WebSocketListener() {
 
         Log.d("Message", text)
 
-        if (i == 0 && text.contains(":Welcome, GLHF!")) {
-            i++
-        } else if (i == 1 && text.contains("JOIN #$channel")) {
-            i++
-        } else if (i == 2 && text.contains("#$channel :End of /NAMES list")) {
-            i++
-        } else if (i == 3) {
+        if (!text.contains(":tmi.twitch.tv") && !text.contains(":$anon")) {
             val user = text.split('!').first().drop(1)
             val msg = text.split(':').last()
 
-            if (this.emotesTV.isNotEmpty()) {
-                if (this.emotesTV.any {
-                        msg.contains(it.asJsonObject.get("name").asString)
-                    }) {
-                    Log.d("Twitch any", "emotesTV")
+            val words = msg.split(" ").toMutableList()
+
+            for (i in words.indices) {
+                Log.d("Twitch f emotesTV", words[i])
+
+                var inds = emptyList<JsonElement>()
+
+                //emotesTV
+
+                if (this.emotesTV.isNotEmpty()) {
+                    inds = this.emotesTV.filter {
+                        words[i].contains(it.asJsonObject.get("name").asString)
+                    }
+                }
+
+                if (inds.isNotEmpty()) {
+                    words[i] = inds.toString()
+                    Log.d("Twitch f emotesTV", inds.toString())
+                }
+
+                //emotesBTTV
+
+                if (this.emotesBTTV.isNotEmpty()) {
+                    inds = this.emotesBTTV.filter {
+                        words[i].contains(it.asJsonObject.get("code").asString)
+                    }
+                }
+
+
+                if (inds.isNotEmpty()) {
+                    words[i] = inds.toString()
+                    Log.d("Twitch f emotesBTTV", inds.toString())
+                }
+
+                //emotes7TV
+
+                if (this.emotes7TV.isNotEmpty()) {
+                    inds = this.emotes7TV.filter {
+                        words[i].contains(it.asJsonObject.get("name").asString)
+                    }
+                }
+
+                if (inds.isNotEmpty()) {
+                    words[i] = inds.toString()
+                    Log.d("Twitch f emotes7TV", inds.toString())
                 }
             }
 
-            if (this.emotesBTTV.isNotEmpty()) {
-                if (this.emotesBTTV.any {
-                        msg.contains(it)
-                    }) {
-                    Log.d("Twitch any", "emotesBTTV")
-                }
-            }
-
-            if (this.emotes7TV.isNotEmpty()) {
-                if (this.emotes7TV.any {
-                        msg.contains(it.asJsonObject.get("name").asString)
-                    }) {
-                    Log.d("Twitch any", "emotesBTTV")
-                }
-            }
-
-            //this._messages.add(0, "$user : $msg")
+            this._messages.add(0, "$user : $msg")
         }
 
-        val user = text.split('!').first().drop(1)
-        val msg = text.split(':').last()
-
-        this._messages.add(0, "$user : $msg")
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
