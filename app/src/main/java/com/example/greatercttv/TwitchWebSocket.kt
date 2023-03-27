@@ -157,16 +157,8 @@ class TwitchWebSocket : WebSocketListener() {
 
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
-        var code: Int = try {
-            jsonObject.get("status_code").asInt
-        } catch (_: Throwable) {
-            0
-        }
-
-        val emotesSets = jsonObject.get("emote_set").asJsonObject
-
         return try {
-            emotesSets.get("emotes").asJsonArray.asList()
+            jsonObject.get("emote_set").asJsonObject.get("emotes").asJsonArray.asList()
         } catch (_: Throwable) {
             emptyList()
         }
