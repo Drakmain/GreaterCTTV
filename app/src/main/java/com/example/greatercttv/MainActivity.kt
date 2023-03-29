@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -17,12 +18,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
 
-
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -36,10 +40,10 @@ class MainActivity : ComponentActivity() {
 
                 val channelList = mainViewModel.channelList
 
-                var messages: List<String> = listOf("")
+                var messages: List<List<String>> = emptyList()
 
                 if (channelList.isNotEmpty()) {
-                    messages = channelList[state.value].second.messages.toList()
+                    messages = channelList[state.value].second.messages
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -50,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
                     Tab(state, channelList.map { it.first }, mainViewModel, openDialog)
 
-                    Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+                    Box(modifier = Modifier.pointerInput(Unit) {
                         detectHorizontalDragGestures { _, dragAmount ->
                             when {
                                 dragAmount > 0 -> {
@@ -67,18 +71,24 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }) {
-                        LazyColumn {
-                            items(messages) { message ->
-                                Text(text = message)
-                                /*
-                                AsyncImage(
-                                    model = "https://cdn.7tv.app/emote/6133b422d6b0df560a6525b2/3x.webp",
-                                    contentDescription = "Translated description of what the image contains"
-                                )
-                                */
-                            }
+
+                        if (messages.isNotEmpty()) {
+                            ChatLazyColumn(messages)
                         }
+
                         //ToastShow(channelList[state.value].second)
+                    }
+
+                    var text by remember { mutableStateOf("") }
+                    Box(
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                    ) {
+                        TextField(
+                            value = text,
+                            onValueChange = { newText -> text = newText },
+                            label = { Text("Entre ton message") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     if (openDialog.value) {
@@ -87,6 +97,83 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ChatLazyColumn(messages: List<List<String>>) {
+    val scrollState = rememberLazyListState()
+
+    LaunchedEffect(messages.size) {
+        scrollState.animateScrollToItem(messages.size - 1)
+    }
+
+    LazyColumn(state = scrollState) {
+        items(messages) { message ->
+            MessageBox(message)
+        }
+    }
+}
+
+@Composable
+fun MessageBox(message: List<String>) {
+    BoxWithConstraints {
+        Layout(content = {
+            Text(text = message[0] + ": ")
+            for (word in message.subList(1, message.size)) {
+                if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains("https://static-cdn.jtvnw.net/emoticons")) {
+                    AsyncImage(
+                        model = word, contentDescription = "emote"
+                    )
+                } else {
+                    Text(text = word)
+                }
+                Text(text = " ")
+            }
+        }, measurePolicy = { measurables, constraints ->
+            var rowWidth = 0
+            var rowHeight = 0
+            var rowPlaceables = mutableListOf<Placeable>()
+
+            val rows = mutableListOf<List<Placeable>>()
+            var currentRow = mutableListOf<Placeable>()
+
+            measurables.forEach { measurable ->
+                val placeable = measurable.measure(constraints)
+
+                if (rowWidth + placeable.width > constraints.maxWidth) {
+                    rows.add(currentRow)
+                    currentRow = mutableListOf()
+                    rowWidth = 0
+                    rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
+                    rowPlaceables.clear()
+                }
+
+                rowWidth += placeable.width
+                rowPlaceables.add(placeable)
+                currentRow.add(placeable)
+            }
+
+            if (currentRow.isNotEmpty()) {
+                rows.add(currentRow)
+                rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
+            }
+
+            layout(constraints.maxWidth, rowHeight) {
+                var y = 0
+
+                rows.forEach { rowPlaceables ->
+                    var x = 0
+
+                    rowPlaceables.forEach { placeable ->
+                        placeable.placeRelative(x, y)
+                        x += placeable.width
+                    }
+
+                    y += rowPlaceables.maxOfOrNull { it.height } ?: 0
+                }
+            }
+        })
     }
 }
 
