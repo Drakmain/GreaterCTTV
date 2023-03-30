@@ -26,7 +26,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -36,8 +35,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 import android.webkit.WebViewClient
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.viewinterop.AndroidView
-
+import kotlinx.coroutines.CoroutineScope
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,34 +65,32 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Test(openDialog, mainViewModel, state)
-
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(Icons.Default.ExpandMore, contentDescription = "Ajouter une chaine")
-                    }
-
-                    Tab(state, channelList.map { it.first }, mainViewModel, openDialog)
-
-                    Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
-                        detectHorizontalDragGestures { _, dragAmount ->
-                            when {
-                                dragAmount > 0 -> {
-                                    if (channelList.getOrNull(state.value - 1) != null) {
-                                        state.value--
+                    Pannel(
+                        channelList,
+                        state,
+                        channelList.map { it.first },
+                        mainViewModel,
+                        openDialog
+                    )
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                when {
+                                    dragAmount > 0 -> {
+                                        if (channelList.getOrNull(state.value - 1) != null) {
+                                            state.value--
+                                        }
                                     }
-                                }
 
-                                dragAmount < 0 -> {
-                                    if (channelList.getOrNull(state.value + 1) != null) {
-                                        state.value++
+                                    dragAmount < 0 -> {
+                                        if (channelList.getOrNull(state.value + 1) != null) {
+                                            state.value++
+                                        }
                                     }
                                 }
                             }
-                        }
-                    }) {
+                        }) {
                         LazyColumn {
                             items(messages) { message ->
                                 Text(text = message)
@@ -112,102 +115,124 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
-fun Test2(
-    openDialog: MutableState<Boolean>,
-    mainViewModel: MainViewModel,
-    state: MutableState<Int>
-) {
+fun AfficherStream(channel: String, scale: Float, heightStream: Float, offsetYValue: Float) {
+    //val scale = Resources.getSystem().displayMetrics.density
+    //val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
+    //val heightStream = widthScreen * 9 / 16
+
     AndroidView(
         factory = { context ->
             WebView(context).apply {
                 settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                isVerticalScrollBarEnabled = true
-                webViewClient = WebViewClient()
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
-                loadUrl("http://player.twitch.tv/?channel=sakor_&parent=twitch.tv")
+                loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
             }
         },
-        update = { view ->
-            view.loadUrl("http://player.twitch.tv/?channel=sakor_&parent=twitch.tv")
-        },
-    modifier = Modifier.fillMaxWidth()
-        .height(400.dp))
-}
-@SuppressLint("CoroutineCreationDuringComposition")
-@Composable
-fun Test(
-    openDialog: MutableState<Boolean>,
-    mainViewModel: MainViewModel,
-    state: MutableState<Int>
-) {
-    val offsetY  =  remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
-    val scale = Resources.getSystem().displayMetrics.density
-
-    coroutineScope.launch {
-        offsetY.snapTo(-350 * scale)
-    }
-
-    val html = "<iframe src=\"https://player.twitch.tv/?channel=otplol_&parent=twitch.tv\" height=\"360\" width=\"640\" allowfullscreen/>"
-
-    AndroidView(
-        factory = { context ->
-            WebView(context).apply {
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
-                settings.javaScriptEnabled = true
-
-                //loadDataWithBaseURL("twitch.tv", html, "text/html", "UTF-8", null)
-                //loadUrl("http://samste-vault.net/embed")
-                loadUrl("https://player.twitch.tv/?video=v1773530048&parent=twitch.tv&height=400&width=300")
-            }
-        },
-        /*update = { view ->
-            view.loadUrl("https://player.twitch.tv/?channel=sakor_&parent=twitch.tv")
-        },*/
         modifier = Modifier
             .fillMaxWidth()
-            .height(400.dp)
-            .offset { IntOffset(0, offsetY.value.roundToInt()) }
-            .size(50.dp)
-            .draggable(
-                state = rememberDraggableState { delta ->
-                    coroutineScope.launch {
-                        offsetY.snapTo(offsetY.value + delta)
-                        if (offsetY.value > 0f)
-                            offsetY.snapTo(0f)
-                    }
-                },
-                orientation = Orientation.Vertical,
-                onDragStopped = {
-                    if (offsetY.value < -150 * scale)
-                        coroutineScope.launch {
-                            offsetY.animateTo(
-                                targetValue = -350 * scale,
-                                animationSpec = tween(
-                                    durationMillis = 100,
-                                    delayMillis = 0
-                                )
-                            )
-                        }
-                    else
-                        coroutineScope.launch {
-                            offsetY.animateTo(
-                                targetValue = 0f,
-                                animationSpec = tween(
-                                    durationMillis = 100,
-                                    delayMillis = 0
-                                )
-                            )
-                        }
-                }
-            )
-            .background(Color.Blue)
+            .height(heightStream.dp)
     )
+}
+
+fun PanelSlideTo(
+    pixel: Float,
+    offsetY: Animatable<Float, AnimationVector1D>,
+    coroutineScope: CoroutineScope
+) {
+    coroutineScope.launch {
+        offsetY.animateTo(
+            targetValue = pixel,
+            animationSpec = tween(
+                durationMillis = 100,
+                delayMillis = 0
+            )
+        )
+    }
+}
+
+@SuppressLint("CoroutineCreationDuringComposition")
+@Composable
+fun Pannel(
+    channel: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
+    keys: List<String>,
+    mainViewModel: MainViewModel,
+    openDialog: MutableState<Boolean>,
+) {
+    val scale = Resources.getSystem().displayMetrics.density
+    val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
+    val heightStream = widthScreen * 9 / 16
+    val offsetY = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    var dragUporDown = 0
+    val scrollState = rememberScrollState()
+    var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
+
+    if (offsetY.value >= 0f)
+        iconChevron = Icons.Default.ExpandLess
+    if (offsetY.value <= -heightStream * scale)
+        iconChevron = Icons.Default.ExpandMore
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
+        .fillMaxWidth()
+        .offset { IntOffset(0, offsetY.value.roundToInt()) }
+    ) {
+        if (channel.isNotEmpty()) {
+            AfficherStream(
+                channel = channel[state.value].first,
+                scale = scale,
+                heightStream = heightStream,
+                offsetYValue = offsetY.value
+            )
+            Icon(
+                iconChevron,
+                contentDescription = "chevron vers le bas",
+                modifier = Modifier
+                    .height(50.dp)
+                    .draggable(
+                        state = rememberDraggableState { delta ->
+                            coroutineScope.launch {
+                                offsetY.snapTo(offsetY.value + delta)
+                                if (delta > 1)
+                                    dragUporDown = 1
+                                else if (delta < -1)
+                                    dragUporDown = -1
+                                else if (delta <= 1 && delta >= -1)
+                                    dragUporDown = 0
+                                if (offsetY.value > 0f)
+                                    offsetY.snapTo(0f)
+                                if (offsetY.value < (-heightStream * scale))
+                                    offsetY.snapTo(-heightStream * scale)
+                            }
+                        },
+                        orientation = Orientation.Vertical,
+                        onDragStopped = {
+                            if (dragUporDown == 1)
+                                if (offsetY.value < -heightStream * scale + 50 * scale)
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                            else if (dragUporDown == -1)
+                                if (offsetY.value > -50 * scale)
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                            else
+                                if (offsetY.value < -heightStream * scale / 2)
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                        })
+            )
+            Tab(
+                state,
+                keys,
+                mainViewModel,
+                openDialog,
+            )
+        } else
+            Tab(state, keys, mainViewModel, openDialog)
+
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -258,7 +283,9 @@ fun Tab(
     openDialog: MutableState<Boolean>,
 ) {
     ScrollableTabRow(
-        selectedTabIndex = state.value, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        selectedTabIndex = state.value, modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(48.dp)
     ) {
         keys.forEachIndexed { index, channel ->
             Tab(selected = state.value == index, onClick = {
@@ -279,7 +306,9 @@ fun Tab(
         }
         IconButton(onClick = { openDialog.value = true }) {
             Icon(
-                Icons.Default.Add, contentDescription = "Ajouter une chaine", modifier = Modifier.size(32.dp)
+                Icons.Default.Add,
+                contentDescription = "Ajouter une chaine",
+                modifier = Modifier.size(32.dp)
             )
         }
     }
