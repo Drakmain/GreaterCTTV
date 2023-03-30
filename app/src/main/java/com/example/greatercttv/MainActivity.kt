@@ -2,34 +2,28 @@ package com.example.greatercttv
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.net.Uri
 import android.content.res.Resources
+import android.net.Uri
 import android.os.Bundle
-import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
@@ -37,20 +31,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-import android.webkit.WebViewClient
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.CoroutineScope
 
 class MainActivity : ComponentActivity() {
 
@@ -76,33 +62,33 @@ class MainActivity : ComponentActivity() {
                     messages = channelList[state.value].second.messages
                 }
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Pannel(
-                        channelList,
-                        state,
-                        channelList.map { it.first },
-                        mainViewModel,
-                        openDialog
-                    )
-                    Box(modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures { _, dragAmount ->
-                                when {
-                                    dragAmount > 0 -> {
-                                        if (channelList.getOrNull(state.value - 1) != null) {
-                                            state.value--
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Pannel(
+                            channelList,
+                            state,
+                            channelList.map { it.first },
+                            mainViewModel,
+                            openDialog
+                        )
+                        Box(modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { _, dragAmount ->
+                                    when {
+                                        dragAmount > 0 -> {
+                                            if (channelList.getOrNull(state.value - 1) != null) {
+                                                state.value--
+                                            }
                                         }
-                                    }
 
-                                    dragAmount < 0 -> {
-                                        if (channelList.getOrNull(state.value + 1) != null) {
-                                            state.value++
+                                        dragAmount < 0 -> {
+                                            if (channelList.getOrNull(state.value + 1) != null) {
+                                                state.value++
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }) {
+                            }) {
                             if (channelList.isEmpty()) {
                                 NoChannelText()
                             } else {
@@ -189,7 +175,7 @@ fun MessageBox(message: List<String>) {
         }, measurePolicy = { measurables, constraints ->
             var rowWidth = 0
             var rowHeight = 0
-            var rowPlaceables = mutableListOf<Placeable>()
+            val rowPlaceables = mutableListOf<Placeable>()
 
             val rows = mutableListOf<List<Placeable>>()
             var currentRow = mutableListOf<Placeable>()
@@ -234,11 +220,7 @@ fun MessageBox(message: List<String>) {
 }
 
 @Composable
-fun AfficherStream(channel: String, scale: Float, heightStream: Float, offsetYValue: Float) {
-    //val scale = Resources.getSystem().displayMetrics.density
-    //val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
-    //val heightStream = widthScreen * 9 / 16
-
+fun AfficherStream(channel: String, heightStream: Float) {
     AndroidView(
         factory = { context ->
             WebView(context).apply {
@@ -282,7 +264,6 @@ fun Pannel(
     val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     var dragUporDown = 0
-    val scrollState = rememberScrollState()
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
     val context = LocalContext.current
 
@@ -298,9 +279,7 @@ fun Pannel(
         if (channel.isNotEmpty()) {
             AfficherStream(
                 channel = channel[state.value].first,
-                scale = scale,
                 heightStream = heightStream,
-                offsetYValue = offsetY.value
             )
 
             Row {
