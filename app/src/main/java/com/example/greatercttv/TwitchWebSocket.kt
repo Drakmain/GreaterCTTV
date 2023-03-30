@@ -26,6 +26,8 @@ class TwitchWebSocket : WebSocketListener() {
 
     private lateinit var token: String
 
+    var i = 0
+
     var showToast by mutableStateOf("")
 
     private val _messages = mutableStateListOf<List<String>>()
@@ -315,11 +317,12 @@ class TwitchWebSocket : WebSocketListener() {
 
             words.add(0, user)
 
-            if (this._messages.size > 100) {
-                this._messages.removeFirst()
+            if (this._messages.size >= 100) {
+                val diff = this._messages.size - 100
+                this._messages.removeRange(0, diff)
             }
-            this._messages.add(words)
 
+            this._messages.add(words)
         }
     }
 

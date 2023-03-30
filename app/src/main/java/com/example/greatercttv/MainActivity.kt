@@ -56,85 +56,94 @@ class MainActivity : ComponentActivity() {
 
                 val context = LocalContext.current
 
-                Column {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column {
+                        Row(
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.ExpandMore, contentDescription = "Ajouter une chaine")
+                            }
 
-                    Row(
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.ExpandMore, contentDescription = "Ajouter une chaine")
+                            IconButton(onClick = {
+                                val authUrl =
+                                    "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
+
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                                context.startActivity(intent)
+                            }) {
+                                Icon(
+                                    Icons.Default.Login, contentDescription = "Se connecter"
+                                )
+                            }
                         }
 
-                        IconButton(onClick = {
-                            val authUrl =
-                                "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
+                        Tab(state, channelList.map { it.first }, mainViewModel, openDialog)
 
-
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
-                            context.startActivity(intent)
-                        }) {
-                            Icon(
-                                Icons.Default.Login, contentDescription = "Se connecter"
-                            )
-                        }
-                    }
-
-                    Tab(state, channelList.map { it.first }, mainViewModel, openDialog)
-
-                    Box(modifier = Modifier.pointerInput(Unit) {
-                        detectHorizontalDragGestures { _, dragAmount ->
-                            when {
-                                dragAmount > 0 -> {
-                                    if (channelList.getOrNull(state.value - 1) != null) {
-                                        state.value--
+                        Box(modifier = Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                when {
+                                    dragAmount > 0 -> {
+                                        if (channelList.getOrNull(state.value - 1) != null) {
+                                            state.value--
+                                        }
                                     }
-                                }
 
-                                dragAmount < 0 -> {
-                                    if (channelList.getOrNull(state.value + 1) != null) {
-                                        state.value++
+                                    dragAmount < 0 -> {
+                                        if (channelList.getOrNull(state.value + 1) != null) {
+                                            state.value++
+                                        }
                                     }
                                 }
                             }
-                        }
-                    }) {
+                        }) {
+                            if (channelList.isEmpty()) {
+                                NoChannelText()
+                            } else {
+                                if (channelList[state.value].second.showToast != "Connecté") {
+                                    Spinner()
+                                }
 
-                        if (messages.isNotEmpty()) {
-                            ChatLazyColumn(messages)
-                        } else {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-
-                                Text(
-                                    text = "Aucune chaîne ajoutée"
-                                )
+                                if (messages.isNotEmpty()) {
+                                    ChatLazyColumn(messages)
+                                }
                             }
                         }
 
                         //ToastShow(channelList[state.value].second)
                     }
+                }
 
-                    var text by remember { mutableStateOf("") }
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-                    ) {
-                        TextField(
-                            value = text,
-                            onValueChange = { newText -> text = newText },
-                            label = { Text("Entre ton message") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                var text by remember { mutableStateOf("") }
+                Box(
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                ) {
+                    TextField(
+                        value = text,
+                        onValueChange = { newText -> text = newText },
+                        label = { Text("Entre ton message") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                    if (openDialog.value) {
-                        Diag(openDialog, mainViewModel, state)
-                    }
+                if (openDialog.value) {
+                    Diag(openDialog, mainViewModel, state)
                 }
             }
         }
+    }
+}
+
+@Composable
+fun NoChannelText() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Aucune chaîne ajoutée"
+        )
     }
 }
 
