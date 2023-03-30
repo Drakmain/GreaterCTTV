@@ -9,7 +9,7 @@ class MainViewModel : ViewModel() {
     val channelList: List<Pair<String, TwitchWebSocket>> = _channelList
 
     fun openWebSocket(channel: String, state: MutableState<Int>) {
-        var webSocketListener = TwitchWebSocket()
+        val webSocketListener = TwitchWebSocket()
         webSocketListener.openWebSocket(channel)
 
         _channelList.add(Pair(channel, webSocketListener))
@@ -18,7 +18,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun closeWebSocket(channel: String, state: MutableState<Int>) {
-        var pair = _channelList.find { it.first == channel }
+        val pair = _channelList.find { it.first == channel }
         pair!!.second.closeWebSocket()
         _channelList.remove(pair)
 

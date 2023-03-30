@@ -1,5 +1,8 @@
 package com.example.greatercttv
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Login
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,18 +24,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
 
 class MainActivity : ComponentActivity() {
+
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             GreaterCTTVTheme {
+
                 val mainViewModel: MainViewModel by viewModels()
 
                 val state = remember { mutableStateOf(0) }
@@ -46,10 +54,29 @@ class MainActivity : ComponentActivity() {
                     messages = channelList[state.value].second.messages
                 }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val context = LocalContext.current
 
-                    IconButton(onClick = {}, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                        Icon(Icons.Default.ExpandMore, contentDescription = "Ajouter une chaine")
+                Column {
+
+                    Row(
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.ExpandMore, contentDescription = "Ajouter une chaine")
+                        }
+
+                        IconButton(onClick = {
+                            val authUrl =
+                                "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
+
+
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                            context.startActivity(intent)
+                        }) {
+                            Icon(
+                                Icons.Default.Login, contentDescription = "Se connecter"
+                            )
+                        }
                     }
 
                     Tab(state, channelList.map { it.first }, mainViewModel, openDialog)
@@ -74,6 +101,17 @@ class MainActivity : ComponentActivity() {
 
                         if (messages.isNotEmpty()) {
                             ChatLazyColumn(messages)
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+
+                                Text(
+                                    text = "Aucune chaîne ajoutée"
+                                )
+                            }
                         }
 
                         //ToastShow(channelList[state.value].second)
@@ -121,7 +159,10 @@ fun MessageBox(message: List<String>) {
         Layout(content = {
             Text(text = message[0] + ": ")
             for (word in message.subList(1, message.size)) {
-                if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains("https://static-cdn.jtvnw.net/emoticons")) {
+                if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
+                        "https://static-cdn.jtvnw.net/emoticons"
+                    )
+                ) {
                     AsyncImage(
                         model = word, contentDescription = "emote"
                     )

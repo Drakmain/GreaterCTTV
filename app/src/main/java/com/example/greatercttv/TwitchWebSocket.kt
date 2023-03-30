@@ -24,12 +24,12 @@ class TwitchWebSocket : WebSocketListener() {
     private lateinit var globalEmotesBTTV: List<JsonElement>
     private lateinit var globalEmotesTV: List<JsonElement>
 
+    private lateinit var token: String
+
     var showToast by mutableStateOf("")
 
     private val _messages = mutableStateListOf<List<String>>()
     val messages: List<List<String>> = _messages
-
-    private var i = 0
 
     fun openWebSocket(channel: String) {
         this.channel = channel
@@ -54,9 +54,9 @@ class TwitchWebSocket : WebSocketListener() {
 
         //TV API Calls
 
-        Log.d("Twitch API", "getting App Token")
-        val token = this.getToken()
-        Log.d("API Post token", token)
+        Log.d("Twitch API", "getting App com.example.greatercttv.Token")
+        this.token = getToken()
+        Log.d("API Post token", this.token)
 
         Log.d("Twitch API", "getting channel ID")
         val id = this.getID(token)
@@ -95,7 +95,9 @@ class TwitchWebSocket : WebSocketListener() {
             Request.Builder().header("Content-Type", "application/json").url("https://id.twitch.tv/oauth2/token")
                 .post(formBody).build()
 
-        val response = this.client.newCall(request).execute()
+        val client = OkHttpClient()
+
+        val response = client.newCall(request).execute()
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
 
@@ -227,7 +229,7 @@ class TwitchWebSocket : WebSocketListener() {
 
     override fun onMessage(webSocket: WebSocket, text: String) {
 
-        Log.d("Message", text)
+        //Log.d("Message", text)
 
         if (!text.contains(":tmi.twitch.tv") && !text.contains(":$anon")) {
             val user = text.split('!').first().drop(1)
