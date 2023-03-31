@@ -16,13 +16,10 @@ class TwitchWebSocket : WebSocketListener() {
     private lateinit var client: OkHttpClient
     private lateinit var channel: String
     private lateinit var anon: String
-    private lateinit var emotesTV: List<JsonElement>
-    private lateinit var emotesBTTV: List<JsonElement>
-    private lateinit var emotes7TV: List<JsonElement>
 
-    private lateinit var globalEmotes7TV: List<JsonElement>
-    private lateinit var globalEmotesBTTV: List<JsonElement>
-    private lateinit var globalEmotesTV: List<JsonElement>
+    private lateinit var allEmotesTV: List<JsonElement>
+    private lateinit var allEmotes7TV: List<JsonElement>
+    private lateinit var allEmotesBTTV: List<JsonElement>
 
     private lateinit var token: String
 
@@ -64,26 +61,32 @@ class TwitchWebSocket : WebSocketListener() {
         val id = this.getID(token)
 
         Log.d("Twitch API", "getting channel Twitch Emotes")
-        this.emotesTV = getEmotes(token, id)
+        val emotesTV = getEmotes(token, id)
 
         Log.d("Twitch API", "getting channel Twitch global Emotes")
-        this.globalEmotesTV = getEmotesGlobal(token)
+        val globalEmotesTV = getEmotesGlobal(token)
+
+        this.allEmotesTV = emotesTV + globalEmotesTV
 
         //7TV API Calls
 
         Log.d("Twitch API", "getting channel 7TV Emotes")
-        this.emotes7TV = get7TVEmote(id)
+        val emotes7TV = get7TVEmote(id)
 
         Log.d("Twitch API", "getting channel 7TV global Emotes")
-        this.globalEmotes7TV = this.get7TVGlobalEmote()
+        val globalEmotes7TV = this.get7TVGlobalEmote()
+
+        this.allEmotes7TV = emotes7TV + globalEmotes7TV
 
         //BTTV API Calls
 
         Log.d("Twitch API", "getting channel BTTV Emotes")
-        this.emotesBTTV = getBTTVEmote(id)
+        val emotesBTTV = getBTTVEmote(id)
 
         Log.d("Twitch API", "getting channel BTTV global Emotes")
-        this.globalEmotesBTTV = this.getBTTVGlobalEmote()
+        val globalEmotesBTTV = this.getBTTVGlobalEmote()
+
+        this.allEmotesBTTV = emotesBTTV + globalEmotesBTTV
 
         showToast = "Connecté"
     }
@@ -132,8 +135,6 @@ class TwitchWebSocket : WebSocketListener() {
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
 
-        Log.d("getEmotesGlobal", body)
-
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
         return jsonObject.get("data").asJsonArray.asList()
@@ -162,8 +163,6 @@ class TwitchWebSocket : WebSocketListener() {
         val response = this.client.newCall(request).execute()
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
-
-        Log.d("getBTTVGlobalEmote", body)
 
         val jsonObject = JsonParser.parseString(body).asJsonArray
 
@@ -200,8 +199,6 @@ class TwitchWebSocket : WebSocketListener() {
             val response = this.client.newCall(request).execute()
 
             val body = response.body?.string() ?: throw Throwable("body response is null")
-
-            Log.d("get7TVGlobalEmote", body)
 
             val jsonObject = JsonParser.parseString(body).asJsonObject
 
@@ -240,78 +237,62 @@ class TwitchWebSocket : WebSocketListener() {
             val words = msg.split(" ").toMutableList()
 
             for (i in words.indices) {
-                var inds = emptyList<JsonElement>()
+                var emote: JsonElement? = null
 
-                //emotesTV
+                //allEmotesTV
 
-                if (this.emotesTV.isNotEmpty()) {
-                    inds = this.emotesTV.filter {
-                        words[i].contains(it.asJsonObject.get("name").asString)
+                try {
+                    if (this.allEmotesTV.isNotEmpty()) {
+                        emote = this.allEmotesTV.first {
+                            words[i].contains(it.asJsonObject.get("name").asString)
+                        }
                     }
+                } catch (_: Throwable) {
                 }
 
-                if (inds.isNotEmpty()) {
-                    words[i] = inds[0].asJsonObject.get("images").asJsonObject.get("url_2x").asString
+
+                if (emote != null) {
+                    words[i] = emote.asJsonObject.get("images").asJsonObject.get("url_2x").asString
+                    break
                 }
 
-                inds = emptyList()
+                emote = null
 
-                //globalEmotesTV
+                //allEmotesBTTV
 
-                if (this.globalEmotesTV.isNotEmpty()) {
-                    inds = this.globalEmotesTV.filter {
-                        words[i].contains(it.asJsonObject.get("name").asString)
+                try {
+                    if (this.allEmotesBTTV.isNotEmpty()) {
+                        emote = this.allEmotesBTTV.first {
+                            words[i].contains(it.asJsonObject.get("code").asString)
+                        }
                     }
+                } catch (_: Throwable) {
                 }
 
-                if (inds.isNotEmpty()) {
-                    //Log.d("globalEmotesTV word $i", inds.toString())
-                    //words[i] = inds[0].asJsonObject.get("images").asJsonObject.get("url_2x").asString
-                }
 
-                inds = emptyList()
-
-                //emotesBTTV
-
-                if (this.emotesBTTV.isNotEmpty()) {
-                    inds = this.emotesBTTV.filter {
-                        words[i].contains(it.asJsonObject.get("code").asString)
-                    }
-                }
-
-                if (inds.isNotEmpty()) {
-                    val id = inds[0].asJsonObject.get("id").asString
+                if (emote != null) {
+                    val id = emote.asJsonObject.get("id").asString
                     words[i] = "https://cdn.betterttv.net/emote/$id/2x"
+                    break
                 }
 
-                inds = emptyList()
+                emote = null
 
-                //emotes7TV
+                //allEmotes7TV
 
-                if (this.emotes7TV.isNotEmpty()) {
-                    inds = this.emotes7TV.filter {
-                        words[i].contains(it.asJsonObject.get("name").asString)
+                try {
+                    if (this.allEmotes7TV.isNotEmpty()) {
+                        emote = this.allEmotes7TV.first {
+                            words[i].contains(it.asJsonObject.get("name").asString)
+                        }
                     }
+                } catch (_: Throwable) {
                 }
 
-                if (inds.isNotEmpty()) {
-                    val id = inds[0].asJsonObject.get("id").asString
+                if (emote != null) {
+                    val id = emote.asJsonObject.get("id").asString
                     words[i] = "https://cdn.7tv.app/emote/$id/2x.webp"
-                }
-
-                inds = emptyList()
-
-                //globalEmotes7TV
-
-                if (this.globalEmotes7TV.isNotEmpty()) {
-                    inds = this.globalEmotes7TV.filter {
-                        words[i].contains(it.asJsonObject.get("name").asString)
-                    }
-                }
-
-                if (inds.isNotEmpty()) {
-                    val id = inds[0].asJsonObject.get("id").asString
-                    words[i] = "https://cdn.7tv.app/emote/$id/2x.webp"
+                    break
                 }
             }
 
@@ -323,6 +304,7 @@ class TwitchWebSocket : WebSocketListener() {
             }
 
             this._messages.add(words)
+
         }
     }
 

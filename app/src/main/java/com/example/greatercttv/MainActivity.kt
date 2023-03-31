@@ -47,21 +47,22 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GreaterCTTVTheme {
-
-                val mainViewModel: MainViewModel by viewModels()
-
-                val state = remember { mutableStateOf(0) }
-
-                val openDialog = remember { mutableStateOf(false) }
-
-                val channelList = mainViewModel.channelList
-
-                var messages: List<List<String>> = emptyList()
-
-                if (channelList.isNotEmpty()) {
-                    messages = channelList[state.value].second.messages
-                }
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+
+                    val mainViewModel: MainViewModel by viewModels()
+
+                    val state = remember { mutableStateOf(0) }
+
+                    val openDialog = remember { mutableStateOf(false) }
+
+                    val channelList = mainViewModel.channelList
+
+                    var messages: List<List<String>> = emptyList()
+
+                    if (channelList.isNotEmpty()) {
+                        messages = channelList[state.value].second.messages
+                    }
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Pannel(
                             channelList,
@@ -104,22 +105,23 @@ class MainActivity : ComponentActivity() {
 
                         //ToastShow(channelList[state.value].second)
                     }
-                }
 
-                var text by remember { mutableStateOf("") }
-                Box(
-                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-                ) {
-                    TextField(
-                        value = text,
-                        onValueChange = { newText -> text = newText },
-                        label = { Text("Entre ton message") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
 
-                if (openDialog.value) {
-                    Diag(openDialog, mainViewModel, state)
+                    var text by remember { mutableStateOf("") }
+                    Box(
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                    ) {
+                        TextField(
+                            value = text,
+                            onValueChange = { newText -> text = newText },
+                            label = { Text("Entre ton message") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    if (openDialog.value) {
+                        Diag(openDialog, mainViewModel, state)
+                    }
                 }
             }
         }
@@ -146,6 +148,7 @@ fun ChatLazyColumn(messages: List<List<String>>) {
     LaunchedEffect(messages.size) {
         scrollState.animateScrollToItem(messages.size - 1)
     }
+
 
     LazyColumn(state = scrollState) {
         items(messages) { message ->
