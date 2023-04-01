@@ -21,6 +21,7 @@ class TwitchWebSocket : WebSocketListener() {
     private lateinit var allEmotesTV: List<JsonElement>
     private lateinit var allEmotes7TV: List<JsonElement>
     private lateinit var allEmotesBTTV: List<JsonElement>
+    private lateinit var allEmotesFFZ: List<JsonElement>
 
     private lateinit var token: String
 
@@ -105,6 +106,28 @@ class TwitchWebSocket : WebSocketListener() {
         }
 
         this.allEmotesBTTV = emotesBTTV + globalEmotesBTTV
+
+        //FFZ API Calls
+
+        Log.d("Twitch API", "getting $channel FFZ Emotes")
+        var emotesFFZ = emptyList<JsonElement>()
+        try {
+            emotesFFZ = getFFZEmote(id)
+        } catch (t: Throwable) {
+            Log.d("getting $channel FFZ Emotes error", t.toString())
+        }
+
+        Log.d("Twitch API", "getting FFZ global Emotes")
+        var globalEmotesFFZ = emptyList<JsonElement>()
+        try {
+            globalEmotesFFZ = getFFZGlobalEmote()
+        } catch (t: Throwable) {
+            Log.d("getting FFZ global Emotes error", t.toString())
+        }
+
+        this.allEmotesFFZ = emotesFFZ + globalEmotesFFZ
+
+        Log.d("allEmotesFFZ", allEmotesFFZ.toString())
 
         showToast = "Connecté"
     }
@@ -236,6 +259,30 @@ class TwitchWebSocket : WebSocketListener() {
         }
     }
 
+    private fun getFFZGlobalEmote(): List<JsonElement> {
+        val request: Request = Request.Builder().url("https://api.frankerfacez.com/v1/set/global").build()
+
+        val response = this.client.newCall(request).execute()
+
+        val body = response.body?.string() ?: throw Throwable("body response is null")
+
+        val jsonObject = JsonParser.parseString(body).asJsonObject
+
+        return jsonObject.get("sets").asJsonObject.get("3").asJsonObject.get("emoticons").asJsonArray.asList()
+    }
+
+    private fun getFFZEmote(id: String): List<JsonElement> {
+        val request: Request = Request.Builder().url("https://api.frankerfacez.com/v1/room/id/$id").build()
+
+        val response = this.client.newCall(request).execute()
+
+        val body = response.body?.string() ?: throw Throwable("body response is null")
+
+        val jsonObject = JsonParser.parseString(body).asJsonObject
+
+        return jsonObject.get("sets").asJsonObject.get("emoticons").asJsonArray.asList()
+    }
+
     override fun onMessage(webSocket: WebSocket, text: String) {
 
         //Log.d("Message", text)
@@ -302,6 +349,23 @@ class TwitchWebSocket : WebSocketListener() {
                 if (emote != null) {
                     val id = emote.asJsonObject.get("id").asString
                     words[i] = "https://cdn.7tv.app/emote/$id/2x.webp"
+                    break
+                }
+
+                //allEmotesFFZ
+
+                try {
+                    if (this.allEmotesFFZ.isNotEmpty()) {
+                        emote = this.allEmotesFFZ.first {
+                            words[i].contains(it.asJsonObject.get("name").asString)
+                        }
+                    }
+                } catch (_: Throwable) {
+                }
+
+                if (emote != null) {
+                    val id = emote.asJsonObject.get("id").asString
+                    words[i] = "https://cdn.frankerfacez.com/emote/$id/2"
                     break
                 }
             }

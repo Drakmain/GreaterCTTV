@@ -241,7 +241,7 @@ fun Stream(channel: String, heightStream: Float) {
     )
 }
 
-fun PanelSlideTo(
+fun panelSlideTo(
     pixel: Float,
     offsetY: Animatable<Float, AnimationVector1D>,
     coroutineScope: CoroutineScope
@@ -327,19 +327,19 @@ fun Pannel(
                             onDragStopped = {
                                 if (dragUporDown == 1)
                                     if (offsetY.value < -heightStream * scale + 50 * scale)
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
                                     else
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
+                                        panelSlideTo(0f, offsetY, coroutineScope)
                                 else if (dragUporDown == -1)
                                     if (offsetY.value > -50 * scale)
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
+                                        panelSlideTo(0f, offsetY, coroutineScope)
                                     else
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
                                 else
                                     if (offsetY.value < -heightStream * scale / 2)
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
                                     else
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
+                                        panelSlideTo(0f, offsetY, coroutineScope)
                             })
                 )
             }
