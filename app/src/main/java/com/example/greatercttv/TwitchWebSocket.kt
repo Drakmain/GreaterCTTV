@@ -1,9 +1,10 @@
 package com.example.greatercttv
 
 import android.util.Log
-import android.widget.Toast
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import okhttp3.*
@@ -23,12 +24,10 @@ class TwitchWebSocket : WebSocketListener() {
 
     private lateinit var token: String
 
-    var i = 0
-
-    var showToast by mutableStateOf("")
-
     private val _messages = mutableStateListOf<List<String>>()
     val messages: List<List<String>> = _messages
+
+    var showToast by mutableStateOf("")
 
     fun openWebSocket(channel: String) {
         this.channel = channel
@@ -48,43 +47,62 @@ class TwitchWebSocket : WebSocketListener() {
         Log.d("WebSocket onOpen", "onOpen send NICK")
         webSocket.send("NICK $anon")
 
-        Log.d("WebSocket onOpen", "onOpen send JOIN")
+        Log.d("WebSocket onOpen", "onOpen send JOIN #$channel")
         webSocket.send("JOIN #$channel")
 
         //TV API Calls
 
         Log.d("Twitch API", "getting App com.example.greatercttv.Token")
         this.token = getToken()
-        Log.d("API Post token", this.token)
 
-        Log.d("Twitch API", "getting channel ID")
+        Log.d("Twitch API", "getting $channel ID")
         val id = this.getID(token)
 
-        Log.d("Twitch API", "getting channel Twitch Emotes")
+        Log.d("Twitch API", "getting $channel Twitch Emotes")
         val emotesTV = getEmotes(token, id)
 
-        Log.d("Twitch API", "getting channel Twitch global Emotes")
+        Log.d("Twitch API", "getting Twitch global Emotes")
         val globalEmotesTV = getEmotesGlobal(token)
 
         this.allEmotesTV = emotesTV + globalEmotesTV
 
         //7TV API Calls
 
-        Log.d("Twitch API", "getting channel 7TV Emotes")
-        val emotes7TV = get7TVEmote(id)
+        Log.d("Twitch API", "getting $channel 7TV Emotes")
+        var emotes7TV = emptyList<JsonElement>()
+        try {
+            emotes7TV = get7TVEmote(id)
+        } catch (t: Throwable) {
+            Log.d("getting $channel 7TV Emotes error", t.toString())
+        }
 
-        Log.d("Twitch API", "getting channel 7TV global Emotes")
-        val globalEmotes7TV = this.get7TVGlobalEmote()
+        Log.d("Twitch API", "getting 7TV global Emotes")
+        var globalEmotes7TV = emptyList<JsonElement>()
+        try {
+            globalEmotes7TV = get7TVGlobalEmote()
+        } catch (t: Throwable) {
+            Log.d("getting $channel 7TV Emotes error", t.toString())
+        }
 
         this.allEmotes7TV = emotes7TV + globalEmotes7TV
 
         //BTTV API Calls
 
-        Log.d("Twitch API", "getting channel BTTV Emotes")
-        val emotesBTTV = getBTTVEmote(id)
+        Log.d("Twitch API", "getting $channel BTTV Emotes")
+        var emotesBTTV = emptyList<JsonElement>()
+        try {
+            emotesBTTV = getBTTVEmote(id)
+        } catch (t: Throwable) {
+            Log.d("getting $channel BTTV Emotes error", t.toString())
+        }
 
-        Log.d("Twitch API", "getting channel BTTV global Emotes")
-        val globalEmotesBTTV = this.getBTTVGlobalEmote()
+        Log.d("Twitch API", "getting BTTV global Emotes")
+        var globalEmotesBTTV = emptyList<JsonElement>()
+        try {
+            globalEmotesBTTV = getBTTVGlobalEmote()
+        } catch (t: Throwable) {
+            Log.d("getting BTTV global Emotes error", t.toString())
+        }
 
         this.allEmotesBTTV = emotesBTTV + globalEmotesBTTV
 
@@ -120,8 +138,6 @@ class TwitchWebSocket : WebSocketListener() {
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
 
-        Log.d("getID", body)
-
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
         return jsonObject.getAsJsonArray("data")[0].asJsonObject.get("id").asString
@@ -150,8 +166,6 @@ class TwitchWebSocket : WebSocketListener() {
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
 
-        Log.d("getEmotes", body)
-
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
         return jsonObject.get("data").asJsonArray.asList()
@@ -175,8 +189,6 @@ class TwitchWebSocket : WebSocketListener() {
         val response = this.client.newCall(request).execute()
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
-
-        Log.d("getBTTVEmote", body)
 
         return try {
             val jsonObject = JsonParser.parseString(body).asJsonObject
@@ -214,8 +226,6 @@ class TwitchWebSocket : WebSocketListener() {
         val response = this.client.newCall(request).execute()
 
         val body = response.body?.string() ?: throw Throwable("body response is null")
-
-        Log.d("get7TVEmote", body)
 
         val jsonObject = JsonParser.parseString(body).asJsonObject
 
@@ -298,24 +308,28 @@ class TwitchWebSocket : WebSocketListener() {
 
             words.add(0, user)
 
-            if (this._messages.size >= 100) {
-                val diff = this._messages.size - 100
-                this._messages.removeRange(0, diff)
+            if (this._messages.size > 250) {
+                this._messages.removeRange(0, 100)
             }
 
             this._messages.add(words)
-
         }
+
+        //onMessageReceived?.invoke(text)
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
         webSocket.close(NORMAL_CLOSURE_STATUS, null)
         Log.d("WebSocket onClosing", "Closing : $code / $reason")
+
+        showToast = "Déconnecté"
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
         Log.d("WebSocket onFailure", "Error : " + t.message)
         Log.d("WebSocket onFailure", "Response : " + response.toString())
+
+        showToast = "Déconnecté"
     }
 
     fun closeWebSocket() {
@@ -326,12 +340,5 @@ class TwitchWebSocket : WebSocketListener() {
 
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
-    }
-}
-
-@Composable
-fun ToastShow(webSocketListenerOue: TwitchWebSocket) {
-    if (webSocketListenerOue.showToast != "") {
-        Toast.makeText(LocalContext.current, webSocketListenerOue.showToast, Toast.LENGTH_SHORT).show()
     }
 }

@@ -5,6 +5,9 @@ import android.content.Intent
 import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,20 +39,20 @@ import coil.compose.AsyncImage
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.util.*
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
 
+    private val mainViewModel: MainViewModel by viewModels()
+
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             GreaterCTTVTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-
-                    val mainViewModel: MainViewModel by viewModels()
 
                     val state = remember { mutableStateOf(0) }
 
@@ -102,11 +105,9 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-
-                        //ToastShow(channelList[state.value].second)
                     }
 
-
+                    /*
                     var text by remember { mutableStateOf("") }
                     Box(
                         modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
@@ -117,7 +118,7 @@ class MainActivity : ComponentActivity() {
                             label = { Text("Entre ton message") },
                             modifier = Modifier.fillMaxWidth()
                         )
-                    }
+                    }*/
 
                     if (openDialog.value) {
                         Diag(openDialog, mainViewModel, state)
@@ -144,11 +145,9 @@ fun NoChannelText() {
 @Composable
 fun ChatLazyColumn(messages: List<List<String>>) {
     val scrollState = rememberLazyListState()
-
     LaunchedEffect(messages.size) {
         scrollState.animateScrollToItem(messages.size - 1)
     }
-
 
     LazyColumn(state = scrollState) {
         items(messages) { message ->
@@ -222,12 +221,17 @@ fun MessageBox(message: List<String>) {
     }
 }
 
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun AfficherStream(channel: String, heightStream: Float) {
+fun Stream(channel: String, heightStream: Float) {
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                webChromeClient = WebChromeClient()
                 settings.javaScriptEnabled = true
+                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+                settings.domStorageEnabled = true
+                this.setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
             }
         },
@@ -280,7 +284,7 @@ fun Pannel(
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
         if (channel.isNotEmpty()) {
-            AfficherStream(
+            Stream(
                 channel = channel[state.value].first,
                 heightStream = heightStream,
             )
@@ -339,12 +343,14 @@ fun Pannel(
                             })
                 )
             }
+
             Tab(
                 state,
                 keys,
                 mainViewModel,
                 openDialog,
             )
+
         } else
             Tab(state, keys, mainViewModel, openDialog)
 
