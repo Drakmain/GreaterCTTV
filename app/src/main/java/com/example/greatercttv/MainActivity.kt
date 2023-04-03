@@ -55,7 +55,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GreaterCTTVTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
 
                     val state = remember { mutableStateOf(0) }
 
@@ -81,7 +84,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }, bottomBar = {
                         Box(
-                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomCenter
                         ) {
                             TextField(
                                 value = text,
@@ -227,21 +231,26 @@ fun MessageBox(message: List<String>) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun Stream(channel: String, heightStream: Float) {
+    var webView: WebView? by remember { mutableStateOf(null) }
+
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                webView = this
                 webChromeClient = WebChromeClient()
                 settings.javaScriptEnabled = true
                 settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                 settings.domStorageEnabled = true
                 this.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
             }
         },
         modifier = Modifier
             .fillMaxWidth()
             .height(heightStream.dp)
     )
+    LaunchedEffect(channel) {
+        webView?.loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
+    }
 }
 
 fun PanelSlideTo(
@@ -263,7 +272,7 @@ fun PanelSlideTo(
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun Pannel(
-    channel: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
+    channelList: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
     keys: List<String>,
     mainViewModel: MainViewModel,
     openDialog: MutableState<Boolean>,
@@ -277,6 +286,12 @@ fun Pannel(
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
     val context = LocalContext.current
 
+    if(channelList.isEmpty()){
+        coroutineScope.launch {
+            offsetY.snapTo(0f)
+        }
+    }
+
     if (offsetY.value >= 0f)
         iconChevron = Icons.Default.ExpandLess
     if (offsetY.value <= -heightStream * scale)
@@ -284,52 +299,65 @@ fun Pannel(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
         .fillMaxWidth()
+        .background(MaterialTheme.colorScheme.background)
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
-        if (channel.isNotEmpty()) {
+        if (channelList.isNotEmpty()) {
             Stream(
-                channel = channel[state.value].first,
+                channel = channelList[state.value].first,
                 heightStream = heightStream,
             )
 
-            Row(modifier=Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .draggable(
-                    state = rememberDraggableState { delta ->
-                        coroutineScope.launch {
-                            offsetY.snapTo(offsetY.value + delta)
-                            if (delta > 1)
-                                dragUporDown = 1
-                            else if (delta < -1)
-                                dragUporDown = -1
-                            else if (delta <= 1 && delta >= -1)
-                                dragUporDown = 0
-                            if (offsetY.value > 0f)
-                                offsetY.snapTo(0f)
-                            if (offsetY.value < (-heightStream * scale))
-                                offsetY.snapTo(-heightStream * scale)
-                        }
-                    },
-                    orientation = Orientation.Vertical,
-                    onDragStopped = {
-                        if (dragUporDown == 1)
-                            if (offsetY.value < -heightStream * scale + 50 * scale)
-                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .draggable(
+                        state = rememberDraggableState { delta ->
+                            coroutineScope.launch {
+                                offsetY.snapTo(offsetY.value + delta)
+                                if (delta > 1)
+                                    dragUporDown = 1
+                                else if (delta < -1)
+                                    dragUporDown = -1
+                                else if (delta <= 1 && delta >= -1)
+                                    dragUporDown = 0
+                                if (offsetY.value > 0f)
+                                    offsetY.snapTo(0f)
+                                if (offsetY.value < (-heightStream * scale))
+                                    offsetY.snapTo(-heightStream * scale)
+                            }
+                        },
+                        orientation = Orientation.Vertical,
+                        onDragStopped = {
+                            if (dragUporDown == 1)
+                                if (offsetY.value < -heightStream * scale + 50 * scale)
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                            else if (dragUporDown == -1)
+                                if (offsetY.value > -50 * scale)
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
                             else
-                                PanelSlideTo(0f, offsetY, coroutineScope)
-                        else if (dragUporDown == -1)
-                            if (offsetY.value > -50 * scale)
-                                PanelSlideTo(0f, offsetY, coroutineScope)
-                            else
-                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                        else
-                            if (offsetY.value < -heightStream * scale / 2)
-                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                            else
-                                PanelSlideTo(0f, offsetY, coroutineScope)
-                    })) {
-                IconButton(onClick = {
+                                if (offsetY.value < -heightStream * scale / 2)
+                                    PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                                else
+                                    PanelSlideTo(0f, offsetY, coroutineScope)
+                        })
+            ) {
+
+                Icon(
+                    iconChevron,
+                    contentDescription = "chevron vers le bas",
+                    modifier = Modifier
+                        .height(50.dp)
+                        .align(Alignment.Center)
+                )
+
+                IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
                     val authUrl =
                         "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
 
@@ -341,13 +369,7 @@ fun Pannel(
                     )
                 }
 
-                Icon(
-                    iconChevron,
-                    contentDescription = "chevron vers le bas",
-                    modifier = Modifier
-                        .height(50.dp)
 
-                )
             }
 
             Tab(
