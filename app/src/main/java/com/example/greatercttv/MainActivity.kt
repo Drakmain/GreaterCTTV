@@ -16,15 +16,16 @@ import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -51,6 +52,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
@@ -73,11 +75,13 @@ class MainActivity : ComponentActivity() {
 
                     var messages: List<ParsedMessage?> = emptyList()
 
+                    var text by remember { mutableStateOf("") }
+
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
                     }
 
-                    Column {
+                    Scaffold(topBar = {
                         Pannel(
                             channelList,
                             state,
@@ -86,6 +90,30 @@ class MainActivity : ComponentActivity() {
                             authViewModel,
                             openDialog
                         )
+                    }, bottomBar = {
+                        if (authViewModel.connected) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                TextField(
+                                    value = text,
+                                    onValueChange = { newText ->
+                                        text = newText
+                                    },
+                                    label = { Text("Entre ton message") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                    keyboardActions = KeyboardActions(onSend = {
+                                        channelList[state.value].second.sendMessage(
+                                            text
+                                        )
+                                        text = ""
+                                    })
+                                )
+                            }
+                        }
+                    }, content = {
                         Box(modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
@@ -117,47 +145,13 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
-
-
-                    if (authViewModel.connected) {
-                        var text by remember { mutableStateOf("") }
-                        Box(
-                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-                        ) {
-                            TextField(
-                                value = text,
-                                onValueChange = { newText ->
-                                    text = newText
-                                },
-                                label = { Text("Entre ton message") },
-                                modifier = Modifier.fillMaxWidth(),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                keyboardActions = KeyboardActions(onSend = {
-                                    channelList[state.value].second.sendMessage(
-                                        text
-                                    )
-                                    text = ""
-                                })
-                            )
+                        if (openDialog.value) {
+                            Diag(openDialog, mainViewModel, authViewModel, state)
                         }
-                    }
-
-
-                    if (openDialog.value) {
-                        Diag(openDialog, mainViewModel, authViewModel, state)
-                    }
+                    })
                 }
             }
         }
-    }
-
-    override fun onActivityReenter(resultCode: Int, data: Intent?) {
-        super.onActivityReenter(resultCode, data)
-
-        Log.d("onActivityReenter", "Oue")
-
-        Log.d("connected", data!!.getStringExtra("connected")!!)
     }
 }
 
@@ -292,21 +286,26 @@ fun MessageBox(message: ParsedMessage?, authViewModel: AuthViewModel) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun Stream(channel: String, heightStream: Float) {
+    var webView: WebView? by remember { mutableStateOf(null) }
+
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                webView = this
                 webChromeClient = WebChromeClient()
                 settings.javaScriptEnabled = true
                 settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                 settings.domStorageEnabled = true
                 this.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
             }
         },
         modifier = Modifier
             .fillMaxWidth()
             .height(heightStream.dp)
     )
+    LaunchedEffect(channel) {
+        webView?.loadUrl("https://gcttv.samste-vault.net/stream?width=100%&height=$heightStream&channel=$channel")
+    }
 }
 
 fun panelSlideTo(
@@ -328,7 +327,7 @@ fun panelSlideTo(
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun Pannel(
-    channel: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
+    channelList: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
     keys: List<String>,
     mainViewModel: MainViewModel,
     authViewModel: AuthViewModel,
@@ -343,113 +342,119 @@ fun Pannel(
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
     val context = LocalContext.current
 
+    if(channelList.isEmpty()){
+        coroutineScope.launch {
+            offsetY.snapTo(0f)
+        }
+    }
+
     if (offsetY.value >= 0f)
         iconChevron = Icons.Default.ExpandLess
     if (offsetY.value <= -heightStream * scale)
         iconChevron = Icons.Default.ExpandMore
 
-    Column(modifier = Modifier
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
         .fillMaxWidth()
+        .background(MaterialTheme.colorScheme.background)
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
-        if (channel.isNotEmpty()) {
+        if (channelList.isNotEmpty()) {
             Stream(
-                channel = channel[state.value].first,
+                channel = channelList[state.value].first,
                 heightStream = heightStream,
             )
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            if (channel.isNotEmpty()) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        coroutineScope.launch {
+                            offsetY.snapTo(offsetY.value + delta)
+                            if (delta > 1)
+                                dragUporDown = 1
+                            else if (delta < -1)
+                                dragUporDown = -1
+                            else if (delta <= 1 && delta >= -1)
+                                dragUporDown = 0
+                            if (offsetY.value > 0f)
+                                offsetY.snapTo(0f)
+                            if (offsetY.value < (-heightStream * scale))
+                                offsetY.snapTo(-heightStream * scale)
+                        }
+                    },
+                    orientation = Orientation.Vertical,
+                    onDragStopped = {
+                        if (dragUporDown == 1)
+                            if (offsetY.value < -heightStream * scale + 50 * scale)
+                                panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                            else
+                                panelSlideTo(0f, offsetY, coroutineScope)
+                        else if (dragUporDown == -1)
+                            if (offsetY.value > -50 * scale)
+                                panelSlideTo(0f, offsetY, coroutineScope)
+                            else
+                                panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                        else
+                            if (offsetY.value < -heightStream * scale / 2)
+                                panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                            else
+                                panelSlideTo(0f, offsetY, coroutineScope)
+                    })
+            ) {
+            if (channelList.isNotEmpty()) {
                 Icon(
                     iconChevron,
                     contentDescription = "chevron vers le bas",
                     modifier = Modifier
                         .height(50.dp)
-                        .draggable(
-                            state = rememberDraggableState { delta ->
-                                coroutineScope.launch {
-                                    offsetY.snapTo(offsetY.value + delta)
-                                    if (delta > 1)
-                                        dragUporDown = 1
-                                    else if (delta < -1)
-                                        dragUporDown = -1
-                                    else if (delta <= 1 && delta >= -1)
-                                        dragUporDown = 0
-                                    if (offsetY.value > 0f)
-                                        offsetY.snapTo(0f)
-                                    if (offsetY.value < (-heightStream * scale))
-                                        offsetY.snapTo(-heightStream * scale)
-                                }
-                            },
-                            orientation = Orientation.Vertical,
-                            onDragStopped = {
-                                if (dragUporDown == 1)
-                                    if (offsetY.value < -heightStream * scale + 50 * scale)
-                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                    else
-                                        panelSlideTo(0f, offsetY, coroutineScope)
-                                else if (dragUporDown == -1)
-                                    if (offsetY.value > -50 * scale)
-                                        panelSlideTo(0f, offsetY, coroutineScope)
-                                    else
-                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                else
-                                    if (offsetY.value < -heightStream * scale / 2)
-                                        panelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                    else
-                                        panelSlideTo(0f, offsetY, coroutineScope)
-                            })
+                        .align(Alignment.Center)
                 )
             }
+                IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
+                    if (authViewModel.connected) {
+                        authViewModel.onDisconnect()
+                    } else {
+                        val authUrl =
+                            "https://id.twitch.tv/oauth2/authorize?client_id=ayyfine4dksduojooctr26hbt3zms7&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect&response_type=code" +
+                                    "&scope=user:read:follows" +
+                                    "+chat:edit" +
+                                    "+chat:read"
 
-            IconButton(onClick = {
-                if (authViewModel.connected) {
-                    authViewModel.onDisconnect()
-                } else {
-                    val authUrl =
-                        "https://id.twitch.tv/oauth2/authorize?client_id=ayyfine4dksduojooctr26hbt3zms7&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect&response_type=code" +
-                                "&scope=user:read:follows" +
-                                "+chat:edit" +
-                                "+chat:read"
-
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
-                    context.startActivity(intent)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                        context.startActivity(intent)
+                    }
+                }) {
+                    if (authViewModel.connected) {
+                        Icon(
+                            Icons.Default.Logout, contentDescription = "Se déconnecter"
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Login, contentDescription = "Se connecter"
+                        )
+                    }
                 }
-            }) {
+
                 if (authViewModel.connected) {
-                    Icon(
-                        Icons.Default.Logout, contentDescription = "Se déconnecter"
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Login, contentDescription = "Se connecter"
+                    AsyncImage(
+                        model = authViewModel.userPP, contentDescription = "PP",
+                        modifier = Modifier.size(40.dp)
+                            .clip(CircleShape),
+                        alignment = Alignment.Center
                     )
                 }
             }
 
-            if (authViewModel.connected) {
-                AsyncImage(
-                    model = authViewModel.userPP, contentDescription = "emote",
-                    modifier = Modifier.size(40.dp)
-                        .clip(CircleShape),
-                    alignment = Alignment.Center
-                )
-            }
-        }
-
-        if (channel.isNotEmpty()) {
             Tab(
                 state,
                 keys,
                 mainViewModel,
                 openDialog,
             )
-        } else
-            Tab(state, keys, mainViewModel, openDialog)
 
     }
 }
