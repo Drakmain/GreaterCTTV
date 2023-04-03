@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -15,22 +16,30 @@ import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -45,8 +54,10 @@ import kotlin.math.roundToInt
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
+    private val authViewModel = AuthViewModel.getInstance()
 
-    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+    @OptIn(ExperimentalMaterial3Api::class)
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "MutableCollectionMutableState")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -60,18 +71,19 @@ class MainActivity : ComponentActivity() {
 
                     val channelList = mainViewModel.channelList
 
-                    var messages: List<List<String>> = emptyList()
+                    var messages: List<ParsedMessage?> = emptyList()
 
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column {
                         Pannel(
                             channelList,
                             state,
                             channelList.map { it.first },
                             mainViewModel,
+                            authViewModel,
                             openDialog
                         )
                         Box(modifier = Modifier
@@ -101,31 +113,51 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (messages.isNotEmpty()) {
-                                    ChatLazyColumn(messages)
+                                    ChatLazyColumn(messages, authViewModel)
                                 }
                             }
                         }
                     }
 
-                    /*
-                    var text by remember { mutableStateOf("") }
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-                    ) {
-                        TextField(
-                            value = text,
-                            onValueChange = { newText -> text = newText },
-                            label = { Text("Entre ton message") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }*/
+
+                    if (authViewModel.connected) {
+                        var text by remember { mutableStateOf("") }
+                        Box(
+                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                        ) {
+                            TextField(
+                                value = text,
+                                onValueChange = { newText ->
+                                    text = newText
+                                },
+                                label = { Text("Entre ton message") },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                keyboardActions = KeyboardActions(onSend = {
+                                    channelList[state.value].second.sendMessage(
+                                        text
+                                    )
+                                    text = ""
+                                })
+                            )
+                        }
+                    }
+
 
                     if (openDialog.value) {
-                        Diag(openDialog, mainViewModel, state)
+                        Diag(openDialog, mainViewModel, authViewModel, state)
                     }
                 }
             }
         }
+    }
+
+    override fun onActivityReenter(resultCode: Int, data: Intent?) {
+        super.onActivityReenter(resultCode, data)
+
+        Log.d("onActivityReenter", "Oue")
+
+        Log.d("connected", data!!.getStringExtra("connected")!!)
     }
 }
 
@@ -143,7 +175,7 @@ fun NoChannelText() {
 }
 
 @Composable
-fun ChatLazyColumn(messages: List<List<String>>) {
+fun ChatLazyColumn(messages: List<ParsedMessage?>, authViewModel: AuthViewModel) {
     val scrollState = rememberLazyListState()
     LaunchedEffect(messages.size) {
         scrollState.animateScrollToItem(messages.size - 1)
@@ -151,30 +183,66 @@ fun ChatLazyColumn(messages: List<List<String>>) {
 
     LazyColumn(state = scrollState) {
         items(messages) { message ->
-            MessageBox(message)
+            //MessageBox(message, authViewModel)
+            Oue(message, authViewModel)
         }
     }
 }
 
 @Composable
-fun MessageBox(message: List<String>) {
+fun Oue(message: ParsedMessage?, authViewModel: AuthViewModel) {
+    if (authViewModel.connected) {
+        Text(
+            text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
+            color = Color(MaterialTheme.colorScheme.primary.toArgb())
+        )
+
+    } else {
+        Text(
+            text = message!!.source!!.nick.toString() + ": ",
+            color = Color(MaterialTheme.colorScheme.primary.toArgb())
+        )
+    }
+
+    Text(text = message!!.parameters.toString())
+}
+
+@Composable
+fun MessageBox(message: ParsedMessage?, authViewModel: AuthViewModel) {
     BoxWithConstraints {
         Layout(content = {
-            Text(text = message[0] + ": ")
-            for (word in message.subList(1, message.size)) {
-                if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
-                        "https://static-cdn.jtvnw.net/emoticons"
-                    )
-                ) {
-                    AsyncImage(
-                        model = word, contentDescription = "emote"
-                    )
-                } else {
-                    Text(text = word)
-                }
-                Text(text = " ")
+
+            if (authViewModel.connected) {
+                Text(
+                    text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
+                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
+                )
+
+            } else {
+                Text(
+                    text = message!!.source!!.nick.toString() + ": ",
+                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
+                )
             }
+
+            if (message != null) {
+                for (word in message.split!!) {
+                    if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
+                            "https://static-cdn.jtvnw.net/emoticons"
+                        ) || word.contains("https://cdn.frankerfacez.com/emote")
+                    ) {
+                        AsyncImage(
+                            model = word, contentDescription = "emote"
+                        )
+                    } else {
+                        Text(text = word)
+                    }
+                    Text(text = " ")
+                }
+            }
+
         }, measurePolicy = { measurables, constraints ->
+
             var rowWidth = 0
             var rowHeight = 0
             val rowPlaceables = mutableListOf<Placeable>()
@@ -263,6 +331,7 @@ fun Pannel(
     channel: List<Pair<String, TwitchWebSocket>>, state: MutableState<Int>,
     keys: List<String>,
     mainViewModel: MainViewModel,
+    authViewModel: AuthViewModel,
     openDialog: MutableState<Boolean>,
 ) {
     val scale = Resources.getSystem().displayMetrics.density
@@ -279,7 +348,7 @@ fun Pannel(
     if (offsetY.value <= -heightStream * scale)
         iconChevron = Icons.Default.ExpandMore
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
+    Column(modifier = Modifier
         .fillMaxWidth()
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
@@ -288,20 +357,13 @@ fun Pannel(
                 channel = channel[state.value].first,
                 heightStream = heightStream,
             )
+        }
 
-            Row {
-                IconButton(onClick = {
-                    val authUrl =
-                        "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
-
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
-                    context.startActivity(intent)
-                }) {
-                    Icon(
-                        Icons.Default.Login, contentDescription = "Se connecter"
-                    )
-                }
-
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            if (channel.isNotEmpty()) {
                 Icon(
                     iconChevron,
                     contentDescription = "chevron vers le bas",
@@ -344,13 +406,48 @@ fun Pannel(
                 )
             }
 
+            IconButton(onClick = {
+                if (authViewModel.connected) {
+                    authViewModel.onDisconnect()
+                } else {
+                    val authUrl =
+                        "https://id.twitch.tv/oauth2/authorize?client_id=ayyfine4dksduojooctr26hbt3zms7&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect&response_type=code" +
+                                "&scope=user:read:follows" +
+                                "+chat:edit" +
+                                "+chat:read"
+
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                    context.startActivity(intent)
+                }
+            }) {
+                if (authViewModel.connected) {
+                    Icon(
+                        Icons.Default.Logout, contentDescription = "Se déconnecter"
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Login, contentDescription = "Se connecter"
+                    )
+                }
+            }
+
+            if (authViewModel.connected) {
+                AsyncImage(
+                    model = authViewModel.userPP, contentDescription = "emote",
+                    modifier = Modifier.size(40.dp)
+                        .clip(CircleShape),
+                    alignment = Alignment.Center
+                )
+            }
+        }
+
+        if (channel.isNotEmpty()) {
             Tab(
                 state,
                 keys,
                 mainViewModel,
                 openDialog,
             )
-
         } else
             Tab(state, keys, mainViewModel, openDialog)
 
@@ -362,6 +459,7 @@ fun Pannel(
 fun Diag(
     openDialog: MutableState<Boolean>,
     mainViewModel: MainViewModel,
+    authViewModel: AuthViewModel,
     state: MutableState<Int>
 ) {
 
@@ -374,12 +472,48 @@ fun Diag(
     }, title = {
         Text(text = "Ajouter une chaine")
     }, text = {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            TextField(value = channel, onValueChange = { text ->
-                channel = text
-            })
+            TextField(
+                value = channel, onValueChange = { text ->
+                    channel = text
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = {
+                    openDialog.value = false
+                    mainViewModel.openWebSocket(channel, state)
+                })
+            )
+
+            if (authViewModel.connected) {
+                Text(text = "Chaînes suivies", style = MaterialTheme.typography.bodyLarge)
+
+                LazyColumn {
+                    items(authViewModel.streams.toList()) { channelInfo ->
+
+                        val channelName =
+                            channelInfo.asJsonObject.get("user_name").toString().replace("\"", "")
+
+                        ListItem(
+                            modifier = Modifier.clickable {
+                                openDialog.value = false
+                                mainViewModel.openWebSocket(channelName, state)
+                            },
+                            headlineText = { Text(channelName) },
+                            trailingContent = { Text(channelInfo.asJsonObject.get("viewer_count").toString()) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Filled.Favorite,
+                                    "Icone"
+                                )
+                            }
+                        )
+                        Divider()
+                    }
+                }
+
+            }
         }
     }, confirmButton = {
         TextButton(onClick = {
