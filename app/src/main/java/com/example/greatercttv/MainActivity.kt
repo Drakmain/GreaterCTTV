@@ -15,6 +15,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
@@ -42,6 +44,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
@@ -62,11 +65,13 @@ class MainActivity : ComponentActivity() {
 
                     var messages: List<List<String>> = emptyList()
 
+                    var text by remember { mutableStateOf("") }
+
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Scaffold(topBar = {
                         Pannel(
                             channelList,
                             state,
@@ -74,6 +79,18 @@ class MainActivity : ComponentActivity() {
                             mainViewModel,
                             openDialog
                         )
+                    }, bottomBar = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
+                        ) {
+                            TextField(
+                                value = text,
+                                onValueChange = { newText -> text = newText },
+                                label = { Text("Entre ton message") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }, content = {
                         Box(modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
@@ -105,24 +122,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
-
-                    /*
-                    var text by remember { mutableStateOf("") }
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
-                    ) {
-                        TextField(
-                            value = text,
-                            onValueChange = { newText -> text = newText },
-                            label = { Text("Entre ton message") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }*/
-
-                    if (openDialog.value) {
-                        Diag(openDialog, mainViewModel, state)
-                    }
+                        if (openDialog.value) {
+                            Diag(openDialog, mainViewModel, state)
+                        }
+                    })
                 }
             }
         }
@@ -289,7 +292,43 @@ fun Pannel(
                 heightStream = heightStream,
             )
 
-            Row {
+            Row(modifier=Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        coroutineScope.launch {
+                            offsetY.snapTo(offsetY.value + delta)
+                            if (delta > 1)
+                                dragUporDown = 1
+                            else if (delta < -1)
+                                dragUporDown = -1
+                            else if (delta <= 1 && delta >= -1)
+                                dragUporDown = 0
+                            if (offsetY.value > 0f)
+                                offsetY.snapTo(0f)
+                            if (offsetY.value < (-heightStream * scale))
+                                offsetY.snapTo(-heightStream * scale)
+                        }
+                    },
+                    orientation = Orientation.Vertical,
+                    onDragStopped = {
+                        if (dragUporDown == 1)
+                            if (offsetY.value < -heightStream * scale + 50 * scale)
+                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                            else
+                                PanelSlideTo(0f, offsetY, coroutineScope)
+                        else if (dragUporDown == -1)
+                            if (offsetY.value > -50 * scale)
+                                PanelSlideTo(0f, offsetY, coroutineScope)
+                            else
+                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                        else
+                            if (offsetY.value < -heightStream * scale / 2)
+                                PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
+                            else
+                                PanelSlideTo(0f, offsetY, coroutineScope)
+                    })) {
                 IconButton(onClick = {
                     val authUrl =
                         "https://id.twitch.tv/oauth2/authorize" + "?client_id=ayyfine4dksduojooctr26hbt3zms7" + "&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect" + "&response_type=code" + "&scope=user:read:follows"
@@ -307,40 +346,7 @@ fun Pannel(
                     contentDescription = "chevron vers le bas",
                     modifier = Modifier
                         .height(50.dp)
-                        .draggable(
-                            state = rememberDraggableState { delta ->
-                                coroutineScope.launch {
-                                    offsetY.snapTo(offsetY.value + delta)
-                                    if (delta > 1)
-                                        dragUporDown = 1
-                                    else if (delta < -1)
-                                        dragUporDown = -1
-                                    else if (delta <= 1 && delta >= -1)
-                                        dragUporDown = 0
-                                    if (offsetY.value > 0f)
-                                        offsetY.snapTo(0f)
-                                    if (offsetY.value < (-heightStream * scale))
-                                        offsetY.snapTo(-heightStream * scale)
-                                }
-                            },
-                            orientation = Orientation.Vertical,
-                            onDragStopped = {
-                                if (dragUporDown == 1)
-                                    if (offsetY.value < -heightStream * scale + 50 * scale)
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                    else
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
-                                else if (dragUporDown == -1)
-                                    if (offsetY.value > -50 * scale)
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
-                                    else
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                else
-                                    if (offsetY.value < -heightStream * scale / 2)
-                                        PanelSlideTo(-heightStream * scale, offsetY, coroutineScope)
-                                    else
-                                        PanelSlideTo(0f, offsetY, coroutineScope)
-                            })
+
                 )
             }
 

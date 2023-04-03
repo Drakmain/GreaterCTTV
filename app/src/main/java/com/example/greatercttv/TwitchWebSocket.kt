@@ -308,9 +308,6 @@ class TwitchWebSocket : WebSocketListener() {
 
             words.add(0, user)
 
-            if (this._messages.size > 250) {
-                this._messages.removeRange(0, 100)
-            }
 
             this._messages.add(words)
         }
