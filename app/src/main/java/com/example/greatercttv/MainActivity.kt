@@ -18,7 +18,6 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
@@ -43,7 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.*
@@ -151,33 +149,29 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }, content = {
-                        Box(modifier = Modifier
-                            .padding(
-                                top = ((offsetY.value / scale + heightStream).dp + 103.dp),
-                                bottom = if (authViewModel.connected) {
-                                    57.dp
-                                } else {
-                                    0.dp
-                                }
-                            )
-                            .fillMaxSize()
-                            .pointerInput(Unit) {
-                                detectHorizontalDragGestures { _, dragAmount ->
-                                    when {
-                                        dragAmount > 0 -> {
-                                            if (channelList.getOrNull(state.value - 1) != null) {
-                                                state.value--
-                                            }
-                                        }
-
-                                        dragAmount < 0 -> {
-                                            if (channelList.getOrNull(state.value + 1) != null) {
-                                                state.value++
-                                            }
-                                        }
+                        val coroutineScope = rememberCoroutineScope()
+                        Box(
+                            modifier = Modifier
+                                .padding(
+                                    top = ((offsetY.value / scale + heightStream).dp + 103.dp),
+                                    bottom = if (authViewModel.connected) {
+                                        57.dp
+                                    } else {
+                                        0.dp
                                     }
-                                }
-                            }) {
+                                )
+                                .fillMaxSize()
+                                .draggable(
+                                    state = rememberDraggableState { },
+                                    orientation = Orientation.Horizontal,
+                                    onDragStopped = {
+                                        if (it < 0 && channelList.getOrNull(state.value + 1) != null) {
+                                            state.value++
+                                        } else if (it > 0 && channelList.getOrNull(state.value - 1) != null) {
+                                            state.value--
+                                        }
+                                    })
+                        ) {
                             if (channelList.isEmpty()) {
                                 NoChannelText()
                             } else {
@@ -544,7 +538,7 @@ fun Pannel(
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                //.background(MaterialTheme.colorScheme.scrim)
                 .draggable(
                     state = rememberDraggableState { delta ->
                         coroutineScope.launch {
@@ -617,7 +611,7 @@ fun Pannel(
             if (authViewModel.connected) {
                 AsyncImage(
                     model = authViewModel.userPP, contentDescription = "PP",
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(45.dp).padding(5.dp)
                         .clip(CircleShape),
                     alignment = Alignment.Center
                 )
@@ -719,6 +713,8 @@ fun Tab(
     openDialog: MutableState<Boolean>,
 ) {
     ScrollableTabRow(
+        //containerColor = MaterialTheme.colorScheme.scrim,
+        //contentColor = MaterialTheme.colorScheme.secondary,
         selectedTabIndex = state.value, modifier = Modifier
             .fillMaxWidth()
             .heightIn(48.dp)
