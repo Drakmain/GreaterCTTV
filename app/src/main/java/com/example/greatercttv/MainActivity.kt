@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Resources
 import android.net.Uri
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebChromeClient
@@ -15,11 +16,16 @@ import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,20 +40,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
+import coil.size.Size
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
+import com.google.gson.JsonElement
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.*
@@ -73,11 +87,23 @@ class MainActivity : ComponentActivity() {
 
                     val openDialog = remember { mutableStateOf(false) }
 
+                    val openDialogEmotes = remember { mutableStateOf(false) }
+
                     val channelList = mainViewModel.channelList
 
                     var messages: List<ParsedMessage?> = emptyList()
 
                     var text by remember { mutableStateOf("") }
+
+                    val imageLoader = ImageLoader.Builder(LocalContext.current)
+                        .components {
+                            if (SDK_INT >= 28) {
+                                add(ImageDecoderDecoder.Factory())
+                            } else {
+                                add(GifDecoder.Factory())
+                            }
+                        }
+                        .build()
 
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
@@ -93,29 +119,26 @@ class MainActivity : ComponentActivity() {
                             openDialog
                         )
                     }, bottomBar = {
-                        if (authViewModel.connected) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.BottomCenter
-                            ) {
+                        if (channelList.isNotEmpty()) {
+                            if (authViewModel.connected && channelList[state.value].second.showToast == "Connecté") {
                                 TextField(
+                                    modifier = Modifier.fillMaxWidth(),
                                     value = text,
                                     onValueChange = { newText ->
                                         text = newText
                                     },
-                                    label = { Text("Entre ton message") },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Envoyer un message") },
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                    keyboardActions = KeyboardActions(onSend = {
+                                    keyboardActions = KeyboardActions {
                                         channelList[state.value].second.sendMessage(
                                             text
                                         )
                                         text = ""
-                                    })
+                                    }
                                 )
                             }
                         }
-                    }, content = {
+                    }) {
                         Box(modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
@@ -143,16 +166,195 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (messages.isNotEmpty()) {
-                                    ChatLazyColumn(messages, authViewModel)
+                                    ChatLazyColumn(messages, authViewModel, imageLoader)
+                                }
+
+                                if (authViewModel.connected && channelList[state.value].second.showToast == "Connecté") {
+                                    FloatingActionButton(
+                                        onClick = { openDialogEmotes.value = true },
+                                        modifier = Modifier.align(Alignment.BottomEnd)
+                                            .absolutePadding(left = 0.dp, top = 0.dp, right = 20.dp, bottom = 75.dp)
+                                    ) {
+                                        Icon(Icons.Default.EmojiEmotions, contentDescription = "emotes")
+                                    }
                                 }
                             }
                         }
+
+                        if (openDialogEmotes.value) {
+                            DiagEmotes(openDialogEmotes, mainViewModel, state, imageLoader,
+                                onChange = { newText ->
+                                    text += newText
+                                })
+                        }
+
                         if (openDialog.value) {
                             Diag(openDialog, mainViewModel, authViewModel, state)
                         }
-                    })
+                    }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiagEmotes(
+    openDialogEmotes: MutableState<Boolean>,
+    mainViewModel: MainViewModel,
+    state: MutableState<Int>,
+    imageLoader: ImageLoader,
+    onChange: (String) -> Unit
+) {
+    val emotesTV = mainViewModel.channelList[state.value].second.allEmotesTV.toList()
+    val emotes7TV = mainViewModel.channelList[state.value].second.allEmotes7TV.toList()
+    val emotesBTTV = mainViewModel.channelList[state.value].second.allEmotesBTTV.toList()
+    val emotesFFZ = mainViewModel.channelList[state.value].second.allEmotesFFZ.toList()
+
+    var selectedItem by remember { mutableStateOf(0) }
+
+    val TV = painterResource(R.drawable.tv)
+    val STV = painterResource(R.drawable.stv)
+    val BTTV = painterResource(R.drawable.bttv)
+    val FFZ = painterResource(R.drawable.ffz)
+
+    val items = mutableListOf<String>()
+
+    if (emotesTV.isNotEmpty()) {
+        items.add("TV")
+    }
+
+    if (emotes7TV.isNotEmpty()) {
+        items.add("7TV")
+    }
+
+    if (emotesBTTV.isNotEmpty()) {
+        items.add("BTTV")
+    }
+
+    if (emotesFFZ.isNotEmpty()) {
+        items.add("FFZ")
+    }
+
+    AlertDialog(onDismissRequest = {
+        openDialogEmotes.value = false
+    }, title = {
+        Text(text = "Choisissez une emote")
+    }, text = {
+        Column {
+            NavigationBar {
+                items.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        icon = {
+                            when (item) {
+                                "TV" -> Icon(TV, contentDescription = item, modifier = Modifier.size(24.dp))
+                                "7TV" -> Icon(STV, contentDescription = item, modifier = Modifier.size(24.dp))
+                                "BTTV" -> Icon(BTTV, contentDescription = item, modifier = Modifier.size(24.dp))
+                                "FFZ" -> Icon(FFZ, contentDescription = item, modifier = Modifier.size(24.dp))
+                            }
+                        },
+                        label = { Text(item) },
+                        selected = selectedItem == index,
+                        onClick = { selectedItem = index }
+                    )
+                }
+            }
+
+            val emotes = when (selectedItem) {
+                0 -> emotesTV
+                1 -> emotes7TV
+                2 -> emotesBTTV
+                3 -> emotesFFZ
+                else -> {
+                    listOf()
+                }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 50.dp)
+            ) {
+                items(emotes) { emote ->
+                    Card(
+                        onClick = {
+                            onChange(switchName(selectedItem, emote))
+                            openDialogEmotes.value = false
+                        },
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground),
+                        modifier = Modifier.padding(5.dp).align(Alignment.CenterHorizontally)
+
+                    ) {
+
+                        val model = switchURL(selectedItem, emote)
+
+                        val painter = rememberAsyncImagePainter(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(model)
+                                .size(Size.ORIGINAL)
+                                .build(),
+                            imageLoader = imageLoader
+                        )
+
+                        Image(
+                            painter = painter,
+                            contentDescription = "emote",
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                .absolutePadding(top = 5.dp, bottom = 5.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }, confirmButton = {
+        TextButton(onClick = {}) {}
+    }, dismissButton = {
+        TextButton(onClick = {
+            openDialogEmotes.value = false
+        }) {
+            Text("Annuler")
+        }
+    })
+}
+
+fun switchName(selectedItem: Int, emote: JsonElement): String {
+    return when (selectedItem) {
+        0, 1, 3 -> {
+            emote.asJsonObject.get("name").asString
+        }
+
+        2 -> {
+            emote.asJsonObject.get("code").asString
+        }
+
+        else -> {
+            ""
+        }
+    }
+}
+
+fun switchURL(selectedItem: Int, emote: JsonElement): String {
+    return when (selectedItem) {
+        0 -> {
+            emote.asJsonObject.get("images").asJsonObject.get("url_4x").asString
+        }
+
+        1 -> {
+            val id = emote.asJsonObject.get("id").asString
+            "https://cdn.7tv.app/emote/$id/3x.webp"
+        }
+
+        2 -> {
+            val id = emote.asJsonObject.get("id").asString
+            "https://cdn.betterttv.net/emote/$id/3x"
+        }
+
+        3 -> {
+            val id = emote.asJsonObject.get("id").asString
+            "https://cdn.frankerfacez.com/emote/$id/4"
+        }
+
+        else -> {
+            ""
         }
     }
 }
@@ -171,7 +373,7 @@ fun NoChannelText() {
 }
 
 @Composable
-fun ChatLazyColumn(messages: List<ParsedMessage?>, authViewModel: AuthViewModel) {
+fun ChatLazyColumn(messages: List<ParsedMessage?>, authViewModel: AuthViewModel, imageLoader: ImageLoader) {
     val scrollState = rememberLazyListState()
     LaunchedEffect(messages.size) {
         scrollState.animateScrollToItem(messages.size - 1)
@@ -179,33 +381,25 @@ fun ChatLazyColumn(messages: List<ParsedMessage?>, authViewModel: AuthViewModel)
 
     LazyColumn(state = scrollState) {
         items(messages) { message ->
-            //MessageBox(message, authViewModel)
-            MessageAnnotated(message, authViewModel)
+            MessageAnnotated(message, authViewModel, imageLoader)
         }
     }
 }
 
 @Composable
-fun MessageAnnotated(message: ParsedMessage?, authViewModel: AuthViewModel) {
+fun MessageAnnotated(message: ParsedMessage?, authViewModel: AuthViewModel, imageLoader: ImageLoader) {
 
     val inlineContentMap = mutableMapOf<String, InlineTextContent>()
 
     val annotatedString = buildAnnotatedString {
         if (authViewModel.connected) {
-            /*
-            Text(
-                text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
-                color = Color(MaterialTheme.colorScheme.primary.toArgb())
-            )*/
-            append(message?.tags?.get("display-name")?.toString() ?: "oue")
+            withStyle(style = SpanStyle(color = Color(MaterialTheme.colorScheme.primary.toArgb()))) {
+                append(message?.tags?.get("display-name")?.toString() ?: "oue")
+            }
         } else {
-            /*
-            Text(
-                text = message!!.source!!.nick.toString() + ": ",
-                color = Color(MaterialTheme.colorScheme.primary.toArgb())
-            )
-            */
-            append(message!!.source!!.nick.toString())
+            withStyle(style = SpanStyle(color = Color(MaterialTheme.colorScheme.primary.toArgb()))) {
+                append(message!!.source!!.nick.toString())
+            }
         }
 
         append(": ")
@@ -221,8 +415,17 @@ fun MessageAnnotated(message: ParsedMessage?, authViewModel: AuthViewModel) {
                     inlineContentMap[word] = InlineTextContent(
                         Placeholder(20.sp, 20.sp, PlaceholderVerticalAlign.TextCenter)
                     ) {
-                        AsyncImage(
-                            model = word, contentDescription = "emote"
+                        val painter = rememberAsyncImagePainter(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(word)
+                                .size(Size.ORIGINAL) // Set the target size to load the image at.
+                                .build(),
+                            imageLoader = imageLoader
+                        )
+
+                        Image(
+                            painter = painter,
+                            contentDescription = ""
                         )
                     }
                 } else {
