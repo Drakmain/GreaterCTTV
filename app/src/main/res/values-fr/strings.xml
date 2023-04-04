@@ -1,2 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <string name="no_channel_add">Aucune chaîne ajoutée</string>
+    <string name="add_channel">Ajouter  une chaîne</string>
+    <string name="send_message">Envoyer un message</string>
+    <string name="add">Ajouter</string>
+    <string name="cancel">Annuler</string>
+    <string name="choose_emote">Choisir une emote</string>
+    <string name="followed_channel">Chaînes suivies</string>
+</resources>
