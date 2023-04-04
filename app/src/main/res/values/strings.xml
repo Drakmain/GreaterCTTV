@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">GreaterCTTV</string>
-    <string name="title_activity_auth">Auth</string>
+    <string name="app_name" translatable="false">GreaterCTTV</string>
+    <string name="title_activity_auth" translatable="false">Auth</string>
 </resources>

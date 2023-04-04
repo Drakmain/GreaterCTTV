@@ -53,14 +53,13 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.roundToInt
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
     private val authViewModel = AuthViewModel.getInstance()
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "MutableCollectionMutableState")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +78,14 @@ class MainActivity : ComponentActivity() {
 
                     var text by remember { mutableStateOf("") }
 
+                    val offsetY = remember { Animatable(0f) }
+
+                    val scale = Resources.getSystem().displayMetrics.density
+
+                    val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
+
+                    val heightStream = widthScreen * 9 / 16
+
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
                     }
@@ -90,12 +97,12 @@ class MainActivity : ComponentActivity() {
                             channelList.map { it.first },
                             mainViewModel,
                             authViewModel,
-                            openDialog
+                            openDialog,
+                            offsetY
                         )
                     }, bottomBar = {
                         if (authViewModel.connected) {
                             Box(
-                                modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 TextField(
@@ -104,7 +111,7 @@ class MainActivity : ComponentActivity() {
                                         text = newText
                                     },
                                     label = { Text("Entre ton message") },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().height(55.dp),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     keyboardActions = KeyboardActions(onSend = {
                                         channelList[state.value].second.sendMessage(
@@ -115,8 +122,9 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                    }, content = {
+                    }, content = {paddingValues ->
                         Box(modifier = Modifier
+                            .padding(top = ((offsetY.value / scale + heightStream).dp + 103.dp), bottom=if (authViewModel.connected) {57.dp} else{0.dp})
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures { _, dragAmount ->
@@ -285,11 +293,11 @@ fun Pannel(
     mainViewModel: MainViewModel,
     authViewModel: AuthViewModel,
     openDialog: MutableState<Boolean>,
+    offsetY: Animatable<Float, AnimationVector1D>
 ) {
     val scale = Resources.getSystem().displayMetrics.density
     val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
     val heightStream = widthScreen * 9 / 16
-    val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     var dragUporDown = 0
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
@@ -308,7 +316,6 @@ fun Pannel(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
         .fillMaxWidth()
-        .background(MaterialTheme.colorScheme.background)
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
         if (channelList.isNotEmpty()) {
