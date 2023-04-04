@@ -6,6 +6,7 @@ import android.content.res.Resources
 import android.net.Uri
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -124,7 +125,7 @@ class MainActivity : ComponentActivity() {
                             mainViewModel,
                             authViewModel,
                             openDialog,
-                            offsetY
+                            offsetY,
                         )
                     }, bottomBar = {
                         if (channelList.isNotEmpty()) {
@@ -137,7 +138,7 @@ class MainActivity : ComponentActivity() {
                                         onValueChange = { newText ->
                                             text = newText
                                         },
-                                        label = { Text("Envoyer un message") },
+                                        label = { Text(getString(R.string.send_message)) },
                                         modifier = Modifier.fillMaxWidth().height(55.dp),
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                         keyboardActions = KeyboardActions {
@@ -179,7 +180,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }) {
                             if (channelList.isEmpty()) {
-                                NoChannelText()
+                                NoChannelText(resources)
                             } else {
                                 if (channelList[state.value].second.showToast != "Connecté") {
                                     Spinner()
@@ -205,11 +206,11 @@ class MainActivity : ComponentActivity() {
                             DiagEmotes(openDialogEmotes, mainViewModel, state, imageLoader,
                                 onChange = { newText ->
                                     text += newText
-                                })
+                                }, this.resources)
                         }
 
                         if (openDialog.value) {
-                            Diag(openDialog, mainViewModel, authViewModel, state)
+                            Diag(openDialog, mainViewModel, authViewModel, state, this.resources)
                         }
                     })
                 }
@@ -225,7 +226,8 @@ fun DiagEmotes(
     mainViewModel: MainViewModel,
     state: MutableState<Int>,
     imageLoader: ImageLoader,
-    onChange: (String) -> Unit
+    onChange: (String) -> Unit,
+    resources : Resources
 ) {
     val emotesTV = mainViewModel.channelList[state.value].second.allEmotesTV.toList()
     val emotes7TV = mainViewModel.channelList[state.value].second.allEmotes7TV.toList()
@@ -256,11 +258,10 @@ fun DiagEmotes(
     if (emotesFFZ.isNotEmpty()) {
         items.add("FFZ")
     }
-
     AlertDialog(onDismissRequest = {
         openDialogEmotes.value = false
     }, title = {
-        Text(text = "Choisissez une emote")
+        Text(resources.getString(R.string.choose_emote))
     }, text = {
         Column {
             NavigationBar {
@@ -326,12 +327,12 @@ fun DiagEmotes(
             }
         }
     }, confirmButton = {
-        TextButton(onClick = {}) {}
+
     }, dismissButton = {
         TextButton(onClick = {
             openDialogEmotes.value = false
         }) {
-            Text("Annuler")
+            Text(resources.getString(R.string.cancel))
         }
     })
 }
@@ -380,14 +381,14 @@ fun switchURL(selectedItem: Int, emote: JsonElement): String {
 }
 
 @Composable
-fun NoChannelText() {
+fun NoChannelText(resources : Resources) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Aucune chaîne ajoutée"
+            text = resources.getString(R.string.no_channel_add)
         )
     }
 }
@@ -640,7 +641,8 @@ fun Diag(
     openDialog: MutableState<Boolean>,
     mainViewModel: MainViewModel,
     authViewModel: AuthViewModel,
-    state: MutableState<Int>
+    state: MutableState<Int>,
+    resources : Resources
 ) {
 
     var channel by remember {
@@ -650,7 +652,7 @@ fun Diag(
     AlertDialog(onDismissRequest = {
         openDialog.value = false
     }, title = {
-        Text(text = "Ajouter une chaine")
+        Text(text = resources.getString(R.string.add_channel))
     }, text = {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -667,7 +669,7 @@ fun Diag(
             )
 
             if (authViewModel.connected) {
-                Text(text = "Chaînes suivies", style = MaterialTheme.typography.bodyLarge)
+                Text(text = resources.getString(R.string.followed_channel), style = MaterialTheme.typography.bodyLarge)
 
                 LazyColumn {
                     items(authViewModel.streams.toList()) { channelInfo ->
@@ -700,13 +702,13 @@ fun Diag(
             openDialog.value = false
             mainViewModel.openWebSocket(channel, state)
         }) {
-            Text("Ajouter")
+            Text(resources.getString(R.string.add))
         }
     }, dismissButton = {
         TextButton(onClick = {
             openDialog.value = false
         }) {
-            Text("Annuler")
+            Text(resources.getString(R.string.cancel))
         }
     })
 }
