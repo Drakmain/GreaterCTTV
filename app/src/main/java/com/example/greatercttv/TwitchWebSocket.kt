@@ -8,7 +8,6 @@ import com.google.gson.JsonParser
 import okhttp3.*
 import java.util.*
 import kotlin.random.Random
-import kotlin.system.measureTimeMillis
 
 
 @SuppressLint("MutableCollectionMutableState")
@@ -301,92 +300,100 @@ class TwitchWebSocket : WebSocketListener() {
 
     override fun onMessage(webSocket: WebSocket, text: String) {
 
-        val authViewModel = AuthViewModel.getInstance()
-
         if (!text.contains(":tmi.twitch.tv") && !text.contains(":$anon")) {
             val parsed = parseMessage(text)
 
             if (parsed != null) {
                 parsed.split = parsed.parameters!!.split(" ").toMutableList()
 
-                val elapsedTime = measureTimeMillis {
+                for (i in parsed.split!!.indices) {
+                    var emote: JsonElement? = null
 
-                    for (i in parsed.split!!.indices) {
-                        var emote: JsonElement? = null
+                    //allEmotesTV
 
-                        //allEmotesTV
-
-                        try {
-                            if (this.allEmotesTV.isNotEmpty()) {
-                                emote = this.allEmotesTV.first {
-                                    parsed.split!![i].contains(it.asJsonObject.get("name").asString)
-                                }
+                    try {
+                        if (this.allEmotesTV.isNotEmpty()) {
+                            emote = this.allEmotesTV.firstOrNull {
+                                parsed.split!![i].contains(it.asJsonObject.get("name").asString)
                             }
-                        } catch (_: Throwable) {
-                        }
-
-
-                        if (emote != null) {
-                            parsed.split!![i] = emote.asJsonObject.get("images").asJsonObject.get("url_2x").asString
-                        }
-
-                        emote = null
-
-                        //allEmotesBTTV
-
-                        try {
-                            if (this.allEmotesBTTV.isNotEmpty()) {
-                                emote = this.allEmotesBTTV.first {
-                                    parsed.split!![i].contains(it.asJsonObject.get("code").asString)
-                                }
-                            }
-                        } catch (_: Throwable) {
                         }
 
                         if (emote != null) {
-                            val id = emote.asJsonObject.get("id").asString
-                            parsed.split!![i] = "https://cdn.betterttv.net/emote/$id/2x"
+                            parsed.split!![i] = emote.asJsonObject.get("images").asJsonObject.get("url_4x").asString
                         }
 
-                        emote = null
-
-                        //allEmotes7TV
-
-                        try {
-                            if (this.allEmotes7TV.isNotEmpty()) {
-                                emote = this.allEmotes7TV.first {
-                                    parsed.split!![i].contains(it.asJsonObject.get("name").asString)
-                                }
-                            }
-                        } catch (_: Throwable) {
-                        }
-
-                        if (emote != null) {
-                            val id = emote.asJsonObject.get("id").asString
-                            parsed.split!![i] = "https://cdn.7tv.app/emote/$id/2x.webp"
-                        }
-
-                        emote = null
-
-                        //allEmotesFFZ
-
-                        try {
-                            if (this.allEmotesFFZ.isNotEmpty()) {
-                                emote = this.allEmotesFFZ.first {
-                                    parsed.split!![i].contains(it.asJsonObject.get("name").asString)
-                                }
-                            }
-                        } catch (_: Throwable) {
-                        }
-
-                        if (emote != null) {
-                            val id = emote.asJsonObject.get("id").asString
-                            parsed.split!![i] = "https://cdn.frankerfacez.com/emote/$id/2"
-                        }
+                    } catch (t: Throwable) {
+                        Log.e("allEmotesTV Error", "$t")
+                        Log.e("allEmotesTV emote", "$emote")
                     }
+
+                    emote = null
+
+                    //allEmotesBTTV
+
+                    try {
+                        if (this.allEmotesBTTV.isNotEmpty()) {
+                            emote = this.allEmotesBTTV.firstOrNull {
+                                parsed.split!![i].contains(it.asJsonObject.get("code").asString)
+                            }
+                        }
+
+                        if (emote != null) {
+                            val id = emote.asJsonObject.get("id").asString
+                            parsed.split!![i] = "https://cdn.betterttv.net/emote/$id/3x"
+                        }
+                    } catch (t: Throwable) {
+                        Log.e("allEmotesBTTV Error", "$t")
+                        Log.e("allEmotesTV emote", "$emote")
+                    }
+
+
+
+                    emote = null
+
+                    //allEmotes7TV
+
+                    try {
+                        if (this.allEmotes7TV.isNotEmpty()) {
+                            emote = this.allEmotes7TV.firstOrNull {
+                                parsed.split!![i].contains(it.asJsonObject.get("name").asString)
+                            }
+                        }
+
+                        if (emote != null) {
+                            val id = emote.asJsonObject.get("id").asString
+                            parsed.split!![i] = "https://cdn.7tv.app/emote/$id/3x.webp"
+                        }
+                    } catch (t: Throwable) {
+                        Log.e("allEmotes7TV Error", "$t")
+                        Log.e("allEmotesTV emote", "$emote")
+                    }
+
+
+
+                    emote = null
+
+                    //allEmotesFFZ
+
+                    try {
+                        if (this.allEmotesFFZ.isNotEmpty()) {
+                            emote = this.allEmotesFFZ.firstOrNull() {
+                                parsed.split!![i].contains(it.asJsonObject.get("name").asString)
+                            }
+                        }
+
+                        if (emote != null) {
+                            val id = emote.asJsonObject.get("id").asString
+                            parsed.split!![i] = "https://cdn.frankerfacez.com/emote/$id/4"
+                        }
+                    } catch (t: Throwable) {
+                        Log.e("allEmotesFFZ Error", "$t")
+                        Log.e("allEmotesTV emote", "$emote")
+                    }
+
+
                 }
 
-                Log.d("Time", elapsedTime.toString())
 
                 this._messages.add(parsed)
             }
@@ -401,7 +408,7 @@ class TwitchWebSocket : WebSocketListener() {
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        Log.d("WebSocket onFailure", "Error : " + t.message)
+        Log.d("WebSocket onFailure", "Error : $t")
         Log.d("WebSocket onFailure", "Response : " + response.toString())
 
         showToast = "Déconnecté"

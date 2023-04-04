@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -23,9 +22,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -33,17 +34,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.example.greatercttv.ui.theme.GreaterCTTVTheme
@@ -51,6 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.roundToInt
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -178,109 +180,60 @@ fun ChatLazyColumn(messages: List<ParsedMessage?>, authViewModel: AuthViewModel)
     LazyColumn(state = scrollState) {
         items(messages) { message ->
             //MessageBox(message, authViewModel)
-            Oue(message, authViewModel)
+            MessageAnnotated(message, authViewModel)
         }
     }
 }
 
 @Composable
-fun Oue(message: ParsedMessage?, authViewModel: AuthViewModel) {
-    if (authViewModel.connected) {
-        Text(
-            text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
-            color = Color(MaterialTheme.colorScheme.primary.toArgb())
-        )
+fun MessageAnnotated(message: ParsedMessage?, authViewModel: AuthViewModel) {
 
-    } else {
-        Text(
-            text = message!!.source!!.nick.toString() + ": ",
-            color = Color(MaterialTheme.colorScheme.primary.toArgb())
-        )
-    }
+    val inlineContentMap = mutableMapOf<String, InlineTextContent>()
 
-    Text(text = message!!.parameters.toString())
-}
+    val annotatedString = buildAnnotatedString {
+        if (authViewModel.connected) {
+            /*
+            Text(
+                text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
+                color = Color(MaterialTheme.colorScheme.primary.toArgb())
+            )*/
+            append(message?.tags?.get("display-name")?.toString() ?: "oue")
+        } else {
+            /*
+            Text(
+                text = message!!.source!!.nick.toString() + ": ",
+                color = Color(MaterialTheme.colorScheme.primary.toArgb())
+            )
+            */
+            append(message!!.source!!.nick.toString())
+        }
 
-@Composable
-fun MessageBox(message: ParsedMessage?, authViewModel: AuthViewModel) {
-    BoxWithConstraints {
-        Layout(content = {
+        append(": ")
 
-            if (authViewModel.connected) {
-                Text(
-                    text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
-                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
-                )
+        if (message != null) {
+            for (word in message.split!!) {
+                if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
+                        "https://static-cdn.jtvnw.net/emoticons"
+                    ) || word.contains("https://cdn.frankerfacez.com/emote")
+                ) {
+                    appendInlineContent(id = word)
 
-            } else {
-                Text(
-                    text = message!!.source!!.nick.toString() + ": ",
-                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
-                )
-            }
-
-            if (message != null) {
-                for (word in message.split!!) {
-                    if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
-                            "https://static-cdn.jtvnw.net/emoticons"
-                        ) || word.contains("https://cdn.frankerfacez.com/emote")
+                    inlineContentMap[word] = InlineTextContent(
+                        Placeholder(20.sp, 20.sp, PlaceholderVerticalAlign.TextCenter)
                     ) {
                         AsyncImage(
                             model = word, contentDescription = "emote"
                         )
-                    } else {
-                        Text(text = word)
                     }
-                    Text(text = " ")
+                } else {
+                    append(word)
                 }
+                append(" ")
             }
-
-        }, measurePolicy = { measurables, constraints ->
-
-            var rowWidth = 0
-            var rowHeight = 0
-            val rowPlaceables = mutableListOf<Placeable>()
-
-            val rows = mutableListOf<List<Placeable>>()
-            var currentRow = mutableListOf<Placeable>()
-
-            measurables.forEach { measurable ->
-                val placeable = measurable.measure(constraints)
-
-                if (rowWidth + placeable.width > constraints.maxWidth) {
-                    rows.add(currentRow)
-                    currentRow = mutableListOf()
-                    rowWidth = 0
-                    rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
-                    rowPlaceables.clear()
-                }
-
-                rowWidth += placeable.width
-                rowPlaceables.add(placeable)
-                currentRow.add(placeable)
-            }
-
-            if (currentRow.isNotEmpty()) {
-                rows.add(currentRow)
-                rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
-            }
-
-            layout(constraints.maxWidth, rowHeight) {
-                var y = 0
-
-                rows.forEach { rowPlaceables ->
-                    var x = 0
-
-                    rowPlaceables.forEach { placeable ->
-                        placeable.placeRelative(x, y)
-                        x += placeable.width
-                    }
-
-                    y += rowPlaceables.maxOfOrNull { it.height } ?: 0
-                }
-            }
-        })
+        }
     }
+
+    Text(annotatedString, inlineContent = inlineContentMap)
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -342,7 +295,7 @@ fun Pannel(
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
     val context = LocalContext.current
 
-    if(channelList.isEmpty()){
+    if (channelList.isEmpty()) {
         coroutineScope.launch {
             offsetY.snapTo(0f)
         }
@@ -404,7 +357,7 @@ fun Pannel(
                             else
                                 panelSlideTo(0f, offsetY, coroutineScope)
                     })
-            ) {
+        ) {
             if (channelList.isNotEmpty()) {
                 Icon(
                     iconChevron,
@@ -414,47 +367,47 @@ fun Pannel(
                         .align(Alignment.Center)
                 )
             }
-                IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
-                    if (authViewModel.connected) {
-                        authViewModel.onDisconnect()
-                    } else {
-                        val authUrl =
-                            "https://id.twitch.tv/oauth2/authorize?client_id=ayyfine4dksduojooctr26hbt3zms7&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect&response_type=code" +
-                                    "&scope=user:read:follows" +
-                                    "+chat:edit" +
-                                    "+chat:read"
-
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
-                        context.startActivity(intent)
-                    }
-                }) {
-                    if (authViewModel.connected) {
-                        Icon(
-                            Icons.Default.Logout, contentDescription = "Se déconnecter"
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Login, contentDescription = "Se connecter"
-                        )
-                    }
-                }
-
+            IconButton(modifier = Modifier.align(Alignment.CenterEnd), onClick = {
                 if (authViewModel.connected) {
-                    AsyncImage(
-                        model = authViewModel.userPP, contentDescription = "PP",
-                        modifier = Modifier.size(40.dp)
-                            .clip(CircleShape),
-                        alignment = Alignment.Center
+                    authViewModel.onDisconnect()
+                } else {
+                    val authUrl =
+                        "https://id.twitch.tv/oauth2/authorize?client_id=ayyfine4dksduojooctr26hbt3zms7&redirect_uri=https://gcttv.samste-vault.net/twitch_auth_redirect&response_type=code" +
+                                "&scope=user:read:follows" +
+                                "+chat:edit" +
+                                "+chat:read"
+
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                    context.startActivity(intent)
+                }
+            }) {
+                if (authViewModel.connected) {
+                    Icon(
+                        Icons.Default.Logout, contentDescription = "Se déconnecter"
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Login, contentDescription = "Se connecter"
                     )
                 }
             }
 
-            Tab(
-                state,
-                keys,
-                mainViewModel,
-                openDialog,
-            )
+            if (authViewModel.connected) {
+                AsyncImage(
+                    model = authViewModel.userPP, contentDescription = "PP",
+                    modifier = Modifier.size(40.dp)
+                        .clip(CircleShape),
+                    alignment = Alignment.Center
+                )
+            }
+        }
+
+        Tab(
+            state,
+            keys,
+            mainViewModel,
+            openDialog,
+        )
 
     }
 }
