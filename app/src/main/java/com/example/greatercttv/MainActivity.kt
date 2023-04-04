@@ -34,12 +34,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -238,88 +234,6 @@ fun MessageAnnotated(message: ParsedMessage?, authViewModel: AuthViewModel) {
     }
 
     Text(annotatedString, inlineContent = inlineContentMap)
-}
-
-@Composable
-fun MessageBox(message: ParsedMessage?, authViewModel: AuthViewModel) {
-    BoxWithConstraints {
-        Layout(content = {
-
-            if (authViewModel.connected) {
-                Text(
-                    text = (message?.tags?.get("display-name")?.toString() ?: "oue") + ": ",
-                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
-                )
-
-            } else {
-                Text(
-                    text = message!!.source!!.nick.toString() + ": ",
-                    color = Color(MaterialTheme.colorScheme.primary.toArgb())
-                )
-            }
-
-            if (message != null) {
-                for (word in message.split!!) {
-                    if (word.contains("https://cdn.7tv.app/emote/") || word.contains("https://cdn.betterttv.net/emote/") || word.contains(
-                            "https://static-cdn.jtvnw.net/emoticons"
-                        ) || word.contains("https://cdn.frankerfacez.com/emote")
-                    ) {
-                        AsyncImage(
-                            model = word, contentDescription = "emote"
-                        )
-                    } else {
-                        Text(text = word)
-                    }
-                    Text(text = " ")
-                }
-            }
-
-        }, measurePolicy = { measurables, constraints ->
-
-            var rowWidth = 0
-            var rowHeight = 0
-            val rowPlaceables = mutableListOf<Placeable>()
-
-            val rows = mutableListOf<List<Placeable>>()
-            var currentRow = mutableListOf<Placeable>()
-
-            measurables.forEach { measurable ->
-                val placeable = measurable.measure(constraints)
-
-                if (rowWidth + placeable.width > constraints.maxWidth) {
-                    rows.add(currentRow)
-                    currentRow = mutableListOf()
-                    rowWidth = 0
-                    rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
-                    rowPlaceables.clear()
-                }
-
-                rowWidth += placeable.width
-                rowPlaceables.add(placeable)
-                currentRow.add(placeable)
-            }
-
-            if (currentRow.isNotEmpty()) {
-                rows.add(currentRow)
-                rowHeight += rowPlaceables.maxOfOrNull { it.height } ?: 0
-            }
-
-            layout(constraints.maxWidth, rowHeight) {
-                var y = 0
-
-                rows.forEach { rowPlaceables ->
-                    var x = 0
-
-                    rowPlaceables.forEach { placeable ->
-                        placeable.placeRelative(x, y)
-                        x += placeable.width
-                    }
-
-                    y += rowPlaceables.maxOfOrNull { it.height } ?: 0
-                }
-            }
-        })
-    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
