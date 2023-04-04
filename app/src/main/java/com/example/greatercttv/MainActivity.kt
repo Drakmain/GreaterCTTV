@@ -67,7 +67,6 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.roundToInt
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
@@ -105,6 +104,14 @@ class MainActivity : ComponentActivity() {
                         }
                         .build()
 
+                    val offsetY = remember { Animatable(0f) }
+
+                    val scale = Resources.getSystem().displayMetrics.density
+
+                    val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
+
+                    val heightStream = widthScreen * 9 / 16
+
                     if (channelList.isNotEmpty()) {
                         messages = channelList[state.value].second.messages
                     }
@@ -116,30 +123,43 @@ class MainActivity : ComponentActivity() {
                             channelList.map { it.first },
                             mainViewModel,
                             authViewModel,
-                            openDialog
+                            openDialog,
+                            offsetY
                         )
                     }, bottomBar = {
                         if (channelList.isNotEmpty()) {
                             if (authViewModel.connected && channelList[state.value].second.showToast == "Connecté") {
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = text,
-                                    onValueChange = { newText ->
-                                        text = newText
-                                    },
-                                    label = { Text("Envoyer un message") },
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                    keyboardActions = KeyboardActions {
-                                        channelList[state.value].second.sendMessage(
-                                            text
-                                        )
-                                        text = ""
-                                    }
-                                )
+                                Box(
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    TextField(
+                                        value = text,
+                                        onValueChange = { newText ->
+                                            text = newText
+                                        },
+                                        label = { Text("Envoyer un message") },
+                                        modifier = Modifier.fillMaxWidth().height(55.dp),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                        keyboardActions = KeyboardActions {
+                                            channelList[state.value].second.sendMessage(
+                                                text
+                                            )
+                                            text = ""
+                                        }
+                                    )
+                                }
                             }
                         }
-                    }) {
+                    }, content = {
                         Box(modifier = Modifier
+                            .padding(
+                                top = ((offsetY.value / scale + heightStream).dp + 103.dp),
+                                bottom = if (authViewModel.connected) {
+                                    57.dp
+                                } else {
+                                    0.dp
+                                }
+                            )
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures { _, dragAmount ->
@@ -173,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                     FloatingActionButton(
                                         onClick = { openDialogEmotes.value = true },
                                         modifier = Modifier.align(Alignment.BottomEnd)
-                                            .absolutePadding(left = 0.dp, top = 0.dp, right = 20.dp, bottom = 75.dp)
+                                            .absolutePadding(right = 10.dp, bottom = 10.dp)
                                     ) {
                                         Icon(Icons.Default.EmojiEmotions, contentDescription = "emotes")
                                     }
@@ -191,7 +211,7 @@ class MainActivity : ComponentActivity() {
                         if (openDialog.value) {
                             Diag(openDialog, mainViewModel, authViewModel, state)
                         }
-                    }
+                    })
                 }
             }
         }
@@ -488,11 +508,11 @@ fun Pannel(
     mainViewModel: MainViewModel,
     authViewModel: AuthViewModel,
     openDialog: MutableState<Boolean>,
+    offsetY: Animatable<Float, AnimationVector1D>
 ) {
     val scale = Resources.getSystem().displayMetrics.density
     val widthScreen = Resources.getSystem().displayMetrics.widthPixels / scale
     val heightStream = widthScreen * 9 / 16
-    val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     var dragUporDown = 0
     var iconChevron: ImageVector by remember { mutableStateOf(Icons.Default.ExpandLess) }
@@ -511,7 +531,6 @@ fun Pannel(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
         .fillMaxWidth()
-        .background(MaterialTheme.colorScheme.background)
         .offset { IntOffset(0, offsetY.value.roundToInt()) }
     ) {
         if (channelList.isNotEmpty()) {
