@@ -300,7 +300,12 @@ class TwitchWebSocket : WebSocketListener() {
 
     override fun onMessage(webSocket: WebSocket, text: String) {
 
-        val parsed = parseMessage(text)
+         val parsed = try {
+            parseMessage(text)
+        } catch (t: Throwable){
+            Log.e("parseMessage(text)", t.toString())
+             null
+        }
 
         if (parsed != null && parsed.command?.command == "PRIVMSG") {
             parsed.split = parsed.parameters!!.split(" ").toMutableList()
