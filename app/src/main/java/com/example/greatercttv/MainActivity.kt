@@ -371,14 +371,14 @@ fun switchURL(selectedItem: Int, emote: JsonElement): String {
         else -> {
             ""
         }
+
     }
 }
 
 @Composable
 fun NoChannelText(resources : Resources) {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize().padding(top=40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
