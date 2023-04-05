@@ -50,7 +50,7 @@ fun parseMessage(message: String): ParsedMessage? {
     return parsedMessage
 }
 
-fun parseTags(tags: String): Map<String, Any?> {
+fun parseTags(tags: String): MutableMap<String, Any?> {
     val tagsToIgnore = setOf("client-nonce", "flags")
     val dictParsedTags = mutableMapOf<String, Any?>()
     val parsedTags = tags.split(';')
@@ -182,7 +182,7 @@ fun parseParameters(rawParametersComponent: String, command: Command): Command {
 }
 
 data class ParsedMessage(
-    var tags: Map<String, Any?>?,
+    var tags: MutableMap<String, Any?>?,
     var source: Source?,
     var command: Command?,
     var parameters: String?,
