@@ -6,7 +6,6 @@ import android.content.res.Resources
 import android.net.Uri
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -140,9 +139,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.fillMaxWidth().height(55.dp),
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                         keyboardActions = KeyboardActions {
-                                            channelList[state.value].second.sendMessage(
-                                                text
-                                            )
+                                            mainViewModel.sendMessage(channelList[state.value].first, text)
                                             text = ""
                                         }
                                     )
@@ -197,10 +194,12 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (openDialogEmotes.value) {
-                            DiagEmotes(openDialogEmotes, mainViewModel, state, imageLoader,
+                            DiagEmotes(
+                                openDialogEmotes, mainViewModel, state, imageLoader,
                                 onChange = { newText ->
-                                    text += newText
-                                }, this.resources)
+                                    text += " $newText "
+                                }, this.resources
+                            )
                         }
 
                         if (openDialog.value) {
@@ -221,7 +220,7 @@ fun DiagEmotes(
     state: MutableState<Int>,
     imageLoader: ImageLoader,
     onChange: (String) -> Unit,
-    resources : Resources
+    resources: Resources
 ) {
     val emotesTV = mainViewModel.channelList[state.value].second.allEmotesTV.toList()
     val emotes7TV = mainViewModel.channelList[state.value].second.allEmotes7TV.toList()
@@ -376,7 +375,7 @@ fun switchURL(selectedItem: Int, emote: JsonElement): String {
 }
 
 @Composable
-fun NoChannelText(resources : Resources) {
+fun NoChannelText(resources: Resources) {
     Column(
         modifier = Modifier.fillMaxSize().padding(top=40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -636,7 +635,7 @@ fun Diag(
     mainViewModel: MainViewModel,
     authViewModel: AuthViewModel,
     state: MutableState<Int>,
-    resources : Resources
+    resources: Resources
 ) {
 
     var channel by remember {
